@@ -1,3 +1,4 @@
+from engine.systems.battle import BattleState
 from engine.systems.effect_manager import EffectManager
 from engine.systems.elemental import (
     ComboResult,
@@ -27,6 +28,7 @@ from engine.systems.movement import (
 from engine.systems.turn_manager import PA_PER_TURN, TurnManager
 
 __all__ = [
+    "BattleState",
     "ComboResult",
     "EffectManager",
     "DamageResult",

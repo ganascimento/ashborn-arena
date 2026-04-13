@@ -24,6 +24,8 @@ class BuffDef:
     duration: int = 0
     target: str = "enemy"
     radius: int = 0
+    scaling_attr: str = ""
+    scaling_factor: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -316,7 +318,7 @@ ABILITIES: dict[str, Ability] = {
         classes=(_C,), target=AbilityTarget.AOE, max_range=0,
         aoe_radius=1,
         effects=(
-            BuffDef(tag="consecration", effect_type=EffectType.HOT, value=5.0, duration=3, target="area_allies", radius=1),
+            BuffDef(tag="consecration", effect_type=EffectType.HOT, value=5.0, duration=3, target="area_allies", radius=1, scaling_attr="wis", scaling_factor=0.5),
         ),
     ),
     "retribuicao_divina": Ability(

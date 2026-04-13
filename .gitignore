@@ -6,4 +6,4 @@ dist/
 build/
 node_modules/
 models/**/*.pt
-.env
+.envlogs/

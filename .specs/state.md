@@ -44,29 +44,30 @@ Este arquivo mantem o estado atual do desenvolvimento de cada feature do projeto
 | 10  | Objetos interativos             | concluida | 1     | [features/10_objetos_interativos/](features/10_objetos_interativos/)                   |
 | 11  | Linha de visao e cobertura      | concluida | 1, 10 | [features/11_linha_visao_cobertura/](features/11_linha_visao_cobertura/)               |
 | 12  | Geracao procedural de mapas     | concluida | 10    | [features/12_geracao_procedural_mapas/](features/12_geracao_procedural_mapas/)         |
+| 13  | Mecanicas de combate avancadas  | concluida | 1-12  | [features/13_mecanicas_combate_avancadas/](features/13_mecanicas_combate_avancadas/)   |
 
 ### Treinamento (training/)
 
-| #   | Feature                   | Status   | Dep. | Spec                                                                     |
-| --- | ------------------------- | -------- | ---- | ------------------------------------------------------------------------ |
-| 13  | Ambiente PettingZoo       | pendente | 1-12 | [features/13_ambiente_pettingzoo/](features/13_ambiente_pettingzoo/)     |
-| 14  | MAPPO — redes e algoritmo | pendente | 13   | [features/14_mappo_redes_algoritmo/](features/14_mappo_redes_algoritmo/) |
-| 15  | Training pipeline         | pendente | 14   | [features/15_training_pipeline/](features/15_training_pipeline/)         |
+| #   | Feature                   | Status    | Dep.  | Spec                                                                     |
+| --- | ------------------------- | --------- | ----- | ------------------------------------------------------------------------ |
+| 14  | Ambiente PettingZoo       | concluida | 1-13  | [features/14_ambiente_pettingzoo/](features/14_ambiente_pettingzoo/)     |
+| 15  | MAPPO — redes e algoritmo | concluida | 14    | [features/15_mappo_redes_algoritmo/](features/15_mappo_redes_algoritmo/) |
+| 16  | Training pipeline         | concluida | 15    | [features/16_training_pipeline/](features/16_training_pipeline/)         |
 
 ### Backend (backend/)
 
-| #   | Feature       | Status   | Dep. | Spec                                                     |
-| --- | ------------- | -------- | ---- | -------------------------------------------------------- |
-| 16  | API REST      | pendente | 1-12 | [features/16_api_rest/](features/16_api_rest/)           |
-| 17  | API WebSocket | pendente | 16   | [features/17_api_websocket/](features/17_api_websocket/) |
-| 18  | Inference IA  | pendente | 17   | [features/18_inference_ia/](features/18_inference_ia/)   |
+| #   | Feature       | Status   | Dep.  | Spec                                                     |
+| --- | ------------- | -------- | ----- | -------------------------------------------------------- |
+| 17  | API REST      | pendente | 1-13  | [features/17_api_rest/](features/17_api_rest/)           |
+| 18  | API WebSocket | pendente | 17    | [features/18_api_websocket/](features/18_api_websocket/) |
+| 19  | Inference IA  | pendente | 18    | [features/19_inference_ia/](features/19_inference_ia/)   |
 
 ### Frontend (frontend/)
 
 | #   | Feature                     | Status   | Dep. | Spec                                                                         |
 | --- | --------------------------- | -------- | ---- | ---------------------------------------------------------------------------- |
-| 19  | Setup — menu e preparacao   | pendente | 16   | [features/19_setup_menu_preparacao/](features/19_setup_menu_preparacao/)     |
-| 20  | Batalha — grid e rendering  | pendente | 17   | [features/20_batalha_grid_rendering/](features/20_batalha_grid_rendering/)   |
-| 21  | Batalha — acoes e animacoes | pendente | 20   | [features/21_batalha_acoes_animacoes/](features/21_batalha_acoes_animacoes/) |
-| 22  | Batalha — HUD e feedback    | pendente | 20   | [features/22_batalha_hud_feedback/](features/22_batalha_hud_feedback/)       |
-| 23  | Resultado                   | pendente | 17   | [features/23_resultado/](features/23_resultado/)                             |
+| 20  | Setup — menu e preparacao   | pendente | 17   | [features/20_setup_menu_preparacao/](features/20_setup_menu_preparacao/)     |
+| 21  | Batalha — grid e rendering  | pendente | 18   | [features/21_batalha_grid_rendering/](features/21_batalha_grid_rendering/)   |
+| 22  | Batalha — acoes e animacoes | pendente | 21   | [features/22_batalha_acoes_animacoes/](features/22_batalha_acoes_animacoes/) |
+| 23  | Batalha — HUD e feedback    | pendente | 21   | [features/23_batalha_hud_feedback/](features/23_batalha_hud_feedback/)       |
+| 24  | Resultado                   | pendente | 18   | [features/24_resultado/](features/24_resultado/)                             |
