@@ -10,10 +10,19 @@ from training.curriculum.trainer import Trainer
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ashborn Arena MAPPO Training")
-    parser.add_argument("--phase", type=int, default=0, help="Run only phase N (1-4). 0 = all phases.")
-    parser.add_argument("--episodes", type=int, default=0, help="Override episodes per phase. 0 = use defaults.")
+    parser.add_argument(
+        "--phase", type=int, default=0, help="Run only phase N (1-4). 0 = all phases."
+    )
+    parser.add_argument(
+        "--episodes",
+        type=int,
+        default=0,
+        help="Override episodes per phase. 0 = use defaults.",
+    )
     parser.add_argument("--seed", type=int, default=42, help="Random seed.")
-    parser.add_argument("--log-dir", type=str, default="logs", help="Directory for training logs.")
+    parser.add_argument(
+        "--log-dir", type=str, default="logs", help="Directory for training logs."
+    )
     args = parser.parse_args()
 
     agent = MAPPOAgent()

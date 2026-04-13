@@ -22,11 +22,11 @@ class TestComboResult:
         assert r.freeze_duration == 1
 
 
-class TestComboWetEletrico:
+class TestComboWetElectric:
     def test_returns_combo(self):
         em = EffectManager()
         em.apply_effect("target", Effect("wet", EffectType.DEBUFF, "X", 2))
-        result = check_elemental_combo(em, "target", "eletrico")
+        result = check_elemental_combo(em, "target", "electric")
         assert result is not None
         assert result.damage_modifier == pytest.approx(1.50)
         assert result.apply_freeze is False
@@ -34,15 +34,15 @@ class TestComboWetEletrico:
     def test_consumes_wet(self):
         em = EffectManager()
         em.apply_effect("target", Effect("wet", EffectType.DEBUFF, "X", 2))
-        check_elemental_combo(em, "target", "eletrico")
+        check_elemental_combo(em, "target", "electric")
         assert em.has_effect("target", "wet") is False
 
 
-class TestComboWetFogo:
+class TestComboWetFire:
     def test_returns_combo(self):
         em = EffectManager()
         em.apply_effect("target", Effect("wet", EffectType.DEBUFF, "X", 2))
-        result = check_elemental_combo(em, "target", "fogo")
+        result = check_elemental_combo(em, "target", "fire")
         assert result is not None
         assert result.damage_modifier == pytest.approx(0.70)
         assert result.apply_freeze is False
@@ -50,15 +50,15 @@ class TestComboWetFogo:
     def test_consumes_wet(self):
         em = EffectManager()
         em.apply_effect("target", Effect("wet", EffectType.DEBUFF, "X", 2))
-        check_elemental_combo(em, "target", "fogo")
+        check_elemental_combo(em, "target", "fire")
         assert em.has_effect("target", "wet") is False
 
 
-class TestComboWetGelo:
+class TestComboWetIce:
     def test_returns_combo(self):
         em = EffectManager()
         em.apply_effect("target", Effect("wet", EffectType.DEBUFF, "X", 2))
-        result = check_elemental_combo(em, "target", "gelo")
+        result = check_elemental_combo(em, "target", "ice")
         assert result is not None
         assert result.damage_modifier == pytest.approx(1.0)
         assert result.apply_freeze is True
@@ -67,13 +67,13 @@ class TestComboWetGelo:
     def test_consumes_wet(self):
         em = EffectManager()
         em.apply_effect("target", Effect("wet", EffectType.DEBUFF, "X", 2))
-        check_elemental_combo(em, "target", "gelo")
+        check_elemental_combo(em, "target", "ice")
         assert em.has_effect("target", "wet") is False
 
     def test_applies_freeze_effect(self):
         em = EffectManager()
         em.apply_effect("target", Effect("wet", EffectType.DEBUFF, "X", 2))
-        check_elemental_combo(em, "target", "gelo")
+        check_elemental_combo(em, "target", "ice")
         assert em.has_effect("target", "freeze") is True
         freeze = em.get_effect("target", "freeze")
         assert freeze.effect_type == EffectType.CONTROL
@@ -83,7 +83,7 @@ class TestComboWetGelo:
 class TestNoCombo:
     def test_no_wet_returns_none(self):
         em = EffectManager()
-        result = check_elemental_combo(em, "target", "eletrico")
+        result = check_elemental_combo(em, "target", "electric")
         assert result is None
 
     def test_empty_tag_returns_none(self):
@@ -92,21 +92,21 @@ class TestNoCombo:
         result = check_elemental_combo(em, "target", "")
         assert result is None
 
-    def test_veneno_tag_returns_none(self):
+    def test_poison_tag_returns_none(self):
         em = EffectManager()
         em.apply_effect("target", Effect("wet", EffectType.DEBUFF, "X", 2))
-        result = check_elemental_combo(em, "target", "veneno")
+        result = check_elemental_combo(em, "target", "poison")
         assert result is None
 
     def test_no_combo_preserves_wet(self):
         em = EffectManager()
         em.apply_effect("target", Effect("wet", EffectType.DEBUFF, "X", 2))
-        check_elemental_combo(em, "target", "veneno")
+        check_elemental_combo(em, "target", "poison")
         assert em.has_effect("target", "wet") is True
 
     def test_no_wet_preserves_nothing(self):
         em = EffectManager()
-        check_elemental_combo(em, "target", "eletrico")
+        check_elemental_combo(em, "target", "electric")
         assert em.get_effects("target") == []
 
 

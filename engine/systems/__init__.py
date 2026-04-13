@@ -1,10 +1,4 @@
 from engine.systems.battle import BattleState
-from engine.systems.effect_manager import EffectManager
-from engine.systems.elemental import (
-    ComboResult,
-    check_elemental_combo,
-    has_negative_status,
-)
 from engine.systems.damage import (
     DamageResult,
     DamageType,
@@ -16,15 +10,21 @@ from engine.systems.damage import (
     resolve_magical_attack,
     resolve_physical_attack,
 )
+from engine.systems.effect_manager import EffectManager
+from engine.systems.elemental import (
+    ComboResult,
+    check_elemental_combo,
+    has_negative_status,
+)
 from engine.systems.initiative import determine_turn_order, roll_initiative
 from engine.systems.line_of_sight import get_tiles_in_line, has_line_of_sight
-from engine.systems.opportunity import get_opportunity_attackers
 from engine.systems.movement import (
     execute_move,
     find_path,
     get_reachable_tiles,
     tiles_for_pa,
 )
+from engine.systems.opportunity import get_opportunity_attackers
 from engine.systems.turn_manager import PA_PER_TURN, TurnManager
 
 __all__ = [

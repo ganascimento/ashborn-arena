@@ -1,9 +1,6 @@
 import torch
-import numpy as np
-import pytest
 
 from training.agents.networks import CriticNetwork, PolicyNetwork
-
 
 OBS_SIZE = 162
 NUM_TYPES = 10
@@ -75,7 +72,10 @@ class TestPolicyNetworkActions:
         obs = torch.randn(BATCH, OBS_SIZE)
         type_mask = torch.ones(BATCH, NUM_TYPES, dtype=torch.bool)
         target_mask = torch.ones(BATCH, NUM_TARGETS, dtype=torch.bool)
-        actions = (torch.randint(0, NUM_TYPES, (BATCH,)), torch.randint(0, NUM_TARGETS, (BATCH,)))
+        actions = (
+            torch.randint(0, NUM_TYPES, (BATCH,)),
+            torch.randint(0, NUM_TARGETS, (BATCH,)),
+        )
         log_prob, entropy = net.evaluate_action(obs, actions, type_mask, target_mask)
         assert log_prob.shape == (BATCH,)
         assert entropy.shape == (BATCH,)

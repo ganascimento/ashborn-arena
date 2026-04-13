@@ -16,9 +16,9 @@ class ComboResult:
 
 
 _COMBO_TABLE: dict[str, ComboResult] = {
-    "eletrico": ComboResult(damage_modifier=1.50),
-    "fogo": ComboResult(damage_modifier=0.70),
-    "gelo": ComboResult(damage_modifier=1.0, apply_freeze=True, freeze_duration=1),
+    "electric": ComboResult(damage_modifier=1.50),
+    "fire": ComboResult(damage_modifier=0.70),
+    "ice": ComboResult(damage_modifier=1.0, apply_freeze=True, freeze_duration=1),
 }
 
 
@@ -51,4 +51,6 @@ def check_elemental_combo(
 
 
 def has_negative_status(effect_manager: EffectManager, entity_id: str) -> bool:
-    return any(e.effect_type in _NEGATIVE_TYPES for e in effect_manager.get_effects(entity_id))
+    return any(
+        e.effect_type in _NEGATIVE_TYPES for e in effect_manager.get_effects(entity_id)
+    )

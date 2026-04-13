@@ -57,7 +57,9 @@ def resolve_physical_attack(
         raw = int(raw * 1.5)
 
     if rng.random() < evasion_chance(defender_dex_modifier):
-        return DamageResult(damage=0, is_critical=is_crit, is_evaded=True, raw_damage=raw)
+        return DamageResult(
+            damage=0, is_critical=is_crit, is_evaded=True, raw_damage=raw
+        )
 
     damage = raw - defender_con_modifier
 
@@ -66,7 +68,9 @@ def resolve_physical_attack(
 
     damage = max(damage, 1)
 
-    return DamageResult(damage=damage, is_critical=is_crit, is_evaded=False, raw_damage=raw)
+    return DamageResult(
+        damage=damage, is_critical=is_crit, is_evaded=False, raw_damage=raw
+    )
 
 
 def resolve_magical_attack(
@@ -85,7 +89,9 @@ def resolve_magical_attack(
 
     damage = max(damage, 1)
 
-    return DamageResult(damage=damage, is_critical=False, is_evaded=False, raw_damage=raw)
+    return DamageResult(
+        damage=damage, is_critical=False, is_evaded=False, raw_damage=raw
+    )
 
 
 def resolve_healing(

@@ -4,7 +4,7 @@ import pytest
 
 from engine.generation.map_generator import Biome, generate_map
 from engine.models.grid import Grid, OccupantType
-from engine.models.map_object import OBJECT_TEMPLATES, MapObject, ObjectType
+from engine.models.map_object import MapObject, ObjectType
 from engine.models.position import Position
 
 
@@ -44,13 +44,17 @@ class TestSpawnZones:
     def test_no_objects_in_team_a_spawn(self, seed):
         _, objects = generate_map(Biome.VILLAGE, random.Random(seed))
         for obj in objects:
-            assert obj.position.x >= 2, f"Object at col {obj.position.x} in Team A spawn"
+            assert obj.position.x >= 2, (
+                f"Object at col {obj.position.x} in Team A spawn"
+            )
 
     @pytest.mark.parametrize("seed", range(10))
     def test_no_objects_in_team_b_spawn(self, seed):
         _, objects = generate_map(Biome.VILLAGE, random.Random(seed))
         for obj in objects:
-            assert obj.position.x <= 7, f"Object at col {obj.position.x} in Team B spawn"
+            assert obj.position.x <= 7, (
+                f"Object at col {obj.position.x} in Team B spawn"
+            )
 
 
 class TestSemiSymmetry:
@@ -62,7 +66,10 @@ class TestSemiSymmetry:
         for pos in positions:
             mirror = Position(9 - pos.x, pos.y)
             for candidate in positions:
-                if abs(candidate.x - mirror.x) <= 1 and abs(candidate.y - mirror.y) <= 1:
+                if (
+                    abs(candidate.x - mirror.x) <= 1
+                    and abs(candidate.y - mirror.y) <= 1
+                ):
                     mirrored_count += 1
                     break
         assert mirrored_count > len(objects) * 0.5, (
@@ -75,8 +82,7 @@ class TestStructuralGuarantees:
     def test_min_2_blocking_in_center(self, seed):
         _, objects = generate_map(Biome.VILLAGE, random.Random(seed))
         blocking_center = [
-            o for o in objects
-            if o.blocks_movement and 3 <= o.position.x <= 6
+            o for o in objects if o.blocks_movement and 3 <= o.position.x <= 6
         ]
         assert len(blocking_center) >= 2, (
             f"seed {seed}: only {len(blocking_center)} blocking objects in center"
@@ -85,14 +91,11 @@ class TestStructuralGuarantees:
     @pytest.mark.parametrize("seed", range(20))
     def test_min_1_open_corridor(self, seed):
         _, objects = generate_map(Biome.VILLAGE, random.Random(seed))
-        blocking_positions = {
-            o.position for o in objects if o.blocks_movement
-        }
+        blocking_positions = {o.position for o in objects if o.blocks_movement}
         open_rows = 0
         for row in range(8):
             row_clear = all(
-                Position(col, row) not in blocking_positions
-                for col in range(2, 8)
+                Position(col, row) not in blocking_positions for col in range(2, 8)
             )
             if row_clear:
                 open_rows += 1
@@ -101,9 +104,24 @@ class TestStructuralGuarantees:
 
 class TestBiomePools:
     _POOLS = {
-        Biome.FOREST_DAY: {ObjectType.TREE, ObjectType.BUSH, ObjectType.ROCK, ObjectType.PUDDLE},
-        Biome.FOREST_NIGHT: {ObjectType.TREE, ObjectType.BUSH, ObjectType.ROCK, ObjectType.PUDDLE},
-        Biome.VILLAGE: {ObjectType.CRATE, ObjectType.BARREL, ObjectType.ROCK, ObjectType.BUSH},
+        Biome.FOREST_DAY: {
+            ObjectType.TREE,
+            ObjectType.BUSH,
+            ObjectType.ROCK,
+            ObjectType.PUDDLE,
+        },
+        Biome.FOREST_NIGHT: {
+            ObjectType.TREE,
+            ObjectType.BUSH,
+            ObjectType.ROCK,
+            ObjectType.PUDDLE,
+        },
+        Biome.VILLAGE: {
+            ObjectType.CRATE,
+            ObjectType.BARREL,
+            ObjectType.ROCK,
+            ObjectType.BUSH,
+        },
         Biome.SWAMP: {ObjectType.PUDDLE, ObjectType.BUSH, ObjectType.TREE},
     }
 
@@ -133,10 +151,14 @@ class TestValidity:
         for obj in objects:
             occupants = grid.get_occupants(obj.position)
             matching = [
-                o for o in occupants
-                if o.entity_id == obj.entity_id and o.occupant_type == OccupantType.OBJECT
+                o
+                for o in occupants
+                if o.entity_id == obj.entity_id
+                and o.occupant_type == OccupantType.OBJECT
             ]
-            assert len(matching) == 1, f"No matching occupant for {obj.entity_id} at {obj.position}"
+            assert len(matching) == 1, (
+                f"No matching occupant for {obj.entity_id} at {obj.position}"
+            )
             assert matching[0].blocks_movement == obj.blocks_movement
 
 

@@ -4,6 +4,7 @@ import numpy as np
 
 from engine.models.character import CharacterClass, CharacterState
 from engine.models.effect import EffectType
+from engine.models.map_object import ObjectType
 from engine.systems.battle import BattleState
 from engine.systems.elemental import has_negative_status
 
@@ -120,7 +121,7 @@ def encode_observation(battle_state: BattleState, agent_id: str) -> np.ndarray:
         if obj.is_destroyed:
             continue
         idx = obj.position.y * 10 + obj.position.x
-        val = float(list(type(obj.object_type)).index(obj.object_type) + 1)
+        val = float(list(ObjectType).index(obj.object_type) + 1)
         if obj.on_fire:
             val += 10.0
         map_data[idx] = val

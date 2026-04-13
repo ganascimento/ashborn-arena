@@ -56,7 +56,9 @@ class PolicyNetwork(nn.Module):
         obs: torch.Tensor,
         type_mask: torch.Tensor,
         full_target_mask: torch.Tensor,
-    ) -> tuple[tuple[torch.Tensor, torch.Tensor], torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[
+        tuple[torch.Tensor, torch.Tensor], torch.Tensor, torch.Tensor, torch.Tensor
+    ]:
         features = self.shared(obs)
         type_logits = self.type_head(features)
         type_logits = type_logits.masked_fill(~type_mask, -1e8)

@@ -130,6 +130,14 @@ After all groups complete:
 2. Check each acceptance criterion in `spec.md` — mark satisfied ones
 3. If any criterion is not satisfied, fix it before proceeding
 
+## Step 7.5 — Format Python files
+
+Run the following commands on the project root to format all Python files and remove unused imports:
+
+```bash
+ruff format . && ruff check --fix --unsafe-fixes --select F401,I .
+```
+
 ## Step 8 — Update state.md and notes.md
 
 Once all acceptance criteria are confirmed satisfied:

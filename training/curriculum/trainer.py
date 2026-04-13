@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import random as _random
+from pathlib import Path
 
 import numpy as np
 
@@ -10,12 +12,25 @@ from training.curriculum.logger import TrainingLogger
 from training.curriculum.phases import PhaseConfig
 from training.curriculum.self_play import SelfPlayPool
 from training.environment.arena_env import ArenaEnv
-from training.environment.observations import encode_global_state
 from training.environment.rewards import REWARD_DEFEAT, REWARD_VICTORY
 
 
+def _save_meta(directory: str, episodes: int, updates: int) -> None:
+    path = Path(directory) / "meta.json"
+    path.write_text(json.dumps({"episodes": episodes, "updates": updates}))
+
+
+def _load_meta(directory: str) -> dict:
+    path = Path(directory) / "meta.json"
+    if path.exists():
+        return json.loads(path.read_text())
+    return {"episodes": 0, "updates": 0}
+
+
 class Trainer:
-    def __init__(self, agent: MAPPOAgent, seed: int = 42, log_dir: str = "logs") -> None:
+    def __init__(
+        self, agent: MAPPOAgent, seed: int = 42, log_dir: str = "logs"
+    ) -> None:
         self._agent = agent
         self._seed = seed
         self._rng = _random.Random(seed)
@@ -53,12 +68,16 @@ class Trainer:
             accumulated = pending_rewards.get(agent_id, 0.0)
             pending_rewards[agent_id] = 0.0
 
-            action, log_prob, entropy, used_target_mask = self._agent.select_action_hierarchical(
-                class_name, obs, type_mask, full_target_mask,
+            action, log_prob, entropy, used_target_mask = (
+                self._agent.select_action_hierarchical(
+                    class_name,
+                    obs,
+                    type_mask,
+                    full_target_mask,
+                )
             )
 
-            global_state = encode_global_state(env._battle)
-            value = self._agent.get_value(global_state)
+            value = self._agent.get_value(obs)
 
             env.step(np.array([action[0], action[1]]))
 
@@ -70,7 +89,9 @@ class Trainer:
                 if other_id != agent_id:
                     other_r = env.rewards.get(other_id, 0.0)
                     if other_r != 0.0:
-                        pending_rewards[other_id] = pending_rewards.get(other_id, 0.0) + other_r
+                        pending_rewards[other_id] = (
+                            pending_rewards.get(other_id, 0.0) + other_r
+                        )
 
             buffer.add(
                 agent_id=agent_id,
@@ -82,7 +103,6 @@ class Trainer:
                 done=done,
                 type_mask=type_mask,
                 target_mask=used_target_mask,
-                global_state=global_state,
                 class_name=class_name,
             )
 
@@ -124,13 +144,24 @@ class Trainer:
         }
 
     def train_phase(self, phase: PhaseConfig, pool: SelfPlayPool) -> dict:
+        episode_offset = 0
+        update_offset = 0
         if phase.load_from:
             try:
                 self._agent.load(phase.load_from)
+                meta = _load_meta(phase.load_from)
+                episode_offset = meta["episodes"]
+                update_offset = meta["updates"]
             except FileNotFoundError:
                 pass
 
-        self.logger.start_phase(phase.phase_number, phase.team_sizes, phase.episodes)
+        self.logger.start_phase(
+            phase.phase_number,
+            phase.team_sizes,
+            phase.episodes,
+            episode_offset=episode_offset,
+            update_offset=update_offset,
+        )
 
         buffer = RolloutBuffer()
         total_episodes = 0
@@ -166,6 +197,11 @@ class Trainer:
 
         if phase.checkpoint_dir:
             self._agent.save(phase.checkpoint_dir)
+            _save_meta(
+                phase.checkpoint_dir,
+                episodes=episode_offset + total_episodes,
+                updates=self.logger._update_count,
+            )
 
         self.logger.end_phase(phase.checkpoint_dir)
 

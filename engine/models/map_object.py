@@ -31,12 +31,40 @@ class ObjectTemplate:
 
 
 OBJECT_TEMPLATES: dict[ObjectType, ObjectTemplate] = {
-    ObjectType.CRATE: ObjectTemplate(max_hp=10, blocks_movement=True, blocks_los=True, flammable=True, throwable=True),
-    ObjectType.BARREL: ObjectTemplate(max_hp=12, blocks_movement=True, blocks_los=True, flammable=True, throwable=True),
-    ObjectType.TREE: ObjectTemplate(max_hp=20, blocks_movement=True, blocks_los=True, flammable=True, throwable=False),
-    ObjectType.BUSH: ObjectTemplate(max_hp=5, blocks_movement=False, blocks_los=False, flammable=True, throwable=False),
-    ObjectType.ROCK: ObjectTemplate(max_hp=None, blocks_movement=True, blocks_los=True, flammable=False, throwable=False),
-    ObjectType.PUDDLE: ObjectTemplate(max_hp=None, blocks_movement=False, blocks_los=False, flammable=False, throwable=False),
+    ObjectType.CRATE: ObjectTemplate(
+        max_hp=10, blocks_movement=True, blocks_los=True, flammable=True, throwable=True
+    ),
+    ObjectType.BARREL: ObjectTemplate(
+        max_hp=12, blocks_movement=True, blocks_los=True, flammable=True, throwable=True
+    ),
+    ObjectType.TREE: ObjectTemplate(
+        max_hp=20,
+        blocks_movement=True,
+        blocks_los=True,
+        flammable=True,
+        throwable=False,
+    ),
+    ObjectType.BUSH: ObjectTemplate(
+        max_hp=5,
+        blocks_movement=False,
+        blocks_los=False,
+        flammable=True,
+        throwable=False,
+    ),
+    ObjectType.ROCK: ObjectTemplate(
+        max_hp=None,
+        blocks_movement=True,
+        blocks_los=True,
+        flammable=False,
+        throwable=False,
+    ),
+    ObjectType.PUDDLE: ObjectTemplate(
+        max_hp=None,
+        blocks_movement=False,
+        blocks_los=False,
+        flammable=False,
+        throwable=False,
+    ),
 }
 
 
@@ -62,7 +90,9 @@ class MapObject:
         self._is_destroyed = False
 
     @classmethod
-    def from_type(cls, object_type: ObjectType, entity_id: str, position: Position) -> MapObject:
+    def from_type(
+        cls, object_type: ObjectType, entity_id: str, position: Position
+    ) -> MapObject:
         return cls(entity_id, object_type, position, OBJECT_TEMPLATES[object_type])
 
     @property

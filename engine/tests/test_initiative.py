@@ -1,7 +1,5 @@
 import random
 
-import pytest
-
 from engine.systems.initiative import determine_turn_order, roll_initiative
 
 

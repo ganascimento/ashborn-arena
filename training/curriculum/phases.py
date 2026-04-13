@@ -18,7 +18,7 @@ CURRICULUM_PHASES: list[PhaseConfig] = [
     PhaseConfig(
         phase_number=1,
         team_sizes=[1],
-        episodes=500,
+        episodes=2000,
         update_interval=10,
         pool_interval=50,
         checkpoint_dir="models/easy",
@@ -27,7 +27,7 @@ CURRICULUM_PHASES: list[PhaseConfig] = [
     PhaseConfig(
         phase_number=2,
         team_sizes=[2],
-        episodes=500,
+        episodes=2000,
         update_interval=10,
         pool_interval=50,
         checkpoint_dir=None,
@@ -36,7 +36,7 @@ CURRICULUM_PHASES: list[PhaseConfig] = [
     PhaseConfig(
         phase_number=3,
         team_sizes=[3],
-        episodes=500,
+        episodes=2000,
         update_interval=10,
         pool_interval=50,
         checkpoint_dir="models/normal",
@@ -45,7 +45,7 @@ CURRICULUM_PHASES: list[PhaseConfig] = [
     PhaseConfig(
         phase_number=4,
         team_sizes=[1, 2, 3],
-        episodes=500,
+        episodes=2000,
         update_interval=10,
         pool_interval=50,
         checkpoint_dir="models/hard",

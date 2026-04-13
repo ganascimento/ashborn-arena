@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import deque
 
-from engine.models.grid import Grid, Occupant, OccupantType, Team
+from engine.models.grid import Grid, OccupantType, Team
 from engine.models.position import Position
 
 

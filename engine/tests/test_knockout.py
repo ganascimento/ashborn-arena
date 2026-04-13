@@ -1,10 +1,8 @@
-import pytest
 
 from engine.models.character import (
     BASE_ATTRIBUTES,
     BLEED_DAMAGE,
     DEATH_THRESHOLD,
-    Attributes,
     Character,
     CharacterClass,
     CharacterState,
@@ -12,7 +10,9 @@ from engine.models.character import (
 
 
 def _make_warrior() -> Character:
-    return Character("w1", CharacterClass.WARRIOR, BASE_ATTRIBUTES[CharacterClass.WARRIOR])
+    return Character(
+        "w1", CharacterClass.WARRIOR, BASE_ATTRIBUTES[CharacterClass.WARRIOR]
+    )
 
 
 def _make_mage() -> Character:

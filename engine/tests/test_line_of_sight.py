@@ -1,4 +1,3 @@
-import pytest
 
 from engine.models.position import Position
 from engine.systems.line_of_sight import get_tiles_in_line, has_line_of_sight
@@ -11,7 +10,12 @@ class TestGetTilesInLineHorizontal:
 
     def test_right_to_left(self):
         result = get_tiles_in_line(Position(5, 3), Position(0, 3))
-        assert result == [Position(4, 3), Position(3, 3), Position(2, 3), Position(1, 3)]
+        assert result == [
+            Position(4, 3),
+            Position(3, 3),
+            Position(2, 3),
+            Position(1, 3),
+        ]
 
 
 class TestGetTilesInLineVertical:

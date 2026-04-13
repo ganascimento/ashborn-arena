@@ -3,7 +3,13 @@ from __future__ import annotations
 import random as _random
 
 from engine.generation.map_generator import Biome, generate_map
-from engine.models.ability import ABILITIES, BASIC_ATTACKS, Ability, AbilityTarget
+from engine.models.ability import (
+    ABILITIES,
+    BASIC_ATTACKS,
+    Ability,
+    AbilityTarget,
+    BuffDef,
+)
 from engine.models.character import (
     BASE_ATTRIBUTES,
     Attributes,
@@ -316,7 +322,13 @@ class BattleState:
         for d in pending:
             self._delayed_abilities.remove(d)
             self._resolve_aoe_damage(d["caster_id"], d["target_pos"], d["ability"])
-            events.append({"type": "delayed_resolve", "ability": d["ability"].id, "target": d["target_pos"]})
+            events.append(
+                {
+                    "type": "delayed_resolve",
+                    "ability": d["ability"].id,
+                    "target": d["target_pos"],
+                }
+            )
 
         to_remove = []
         for pos, trap in self._traps.items():
@@ -475,11 +487,21 @@ class BattleState:
             if caster:
                 attr = _get_scaling_attr(trap_ability, caster.character_class)
                 modifier = caster.attributes.modifier(attr)
-                trap_damage = calculate_raw_damage(trap_ability.damage_base, modifier, trap_ability.damage_scaling)
+                trap_damage = calculate_raw_damage(
+                    trap_ability.damage_base, modifier, trap_ability.damage_scaling
+                )
                 self._characters[agent].apply_damage(trap_damage)
-                self._events.append({"type": "trap_triggered", "target": agent, "damage": trap_damage})
+                self._events.append(
+                    {"type": "trap_triggered", "target": agent, "damage": trap_damage}
+                )
                 for bd in trap_ability.effects:
-                    effect = Effect(tag=bd.tag, effect_type=bd.effect_type, source_entity_id=caster_id, duration=bd.duration, value=bd.value)
+                    effect = Effect(
+                        tag=bd.tag,
+                        effect_type=bd.effect_type,
+                        source_entity_id=caster_id,
+                        duration=bd.duration,
+                        value=bd.value,
+                    )
                     self._effect_manager.apply_effect(agent, effect)
                 if self._characters[agent].state == CharacterState.DEAD:
                     self._events.extend(self._handle_death(agent))
@@ -526,17 +548,29 @@ class BattleState:
         char = self._characters[agent]
 
         if ability.damage_base > 0 and ability.delayed:
-            self._delayed_abilities.append({
-                "caster_id": agent, "ability": ability, "target_pos": target_pos,
-            })
-            self._events.append({"type": "delayed_mark", "ability": ability.id, "target": target_pos})
+            self._delayed_abilities.append(
+                {
+                    "caster_id": agent,
+                    "ability": ability,
+                    "target_pos": target_pos,
+                }
+            )
+            self._events.append(
+                {"type": "delayed_mark", "ability": ability.id, "target": target_pos}
+            )
         elif ability.id == "armadilha_espinhosa":
-            self._traps[target_pos] = {"caster_id": agent, "ability": ability, "turns_remaining": 5}
+            self._traps[target_pos] = {
+                "caster_id": agent,
+                "ability": ability,
+                "turns_remaining": 5,
+            }
             self._events.append({"type": "trap_placed", "position": target_pos})
         elif ability.damage_base > 0:
             if ability.chain_targets > 0:
                 self._resolve_chain_damage(agent, target_pos, ability)
-            elif ability.target == AbilityTarget.ADJACENT or (ability.aoe_radius > 0 and ability.target == AbilityTarget.AOE):
+            elif ability.target == AbilityTarget.ADJACENT or (
+                ability.aoe_radius > 0 and ability.target == AbilityTarget.AOE
+            ):
                 self._resolve_aoe_damage(agent, target_pos, ability)
             else:
                 target_id = self._find_character_at(target_pos)
@@ -556,7 +590,11 @@ class BattleState:
                         if heal_amount > 0:
                             char.apply_healing(heal_amount)
                             self._events.append(
-                                {"type": "lifesteal", "entity": agent, "heal": heal_amount}
+                                {
+                                    "type": "lifesteal",
+                                    "entity": agent,
+                                    "heal": heal_amount,
+                                }
                             )
 
         if ability.heal_base > 0:
@@ -566,26 +604,10 @@ class BattleState:
             self._resolve_heal(agent, target_id, ability)
 
         if ability.self_heal_base > 0:
-            attr = _get_scaling_attr(
-                Ability(
-                    id="",
-                    name="",
-                    pa_cost=0,
-                    cooldown=0,
-                    classes=(),
-                    target=AbilityTarget.SELF,
-                    self_heal_attr=ability.self_heal_attr,
-                ),
-                char.character_class,
-            )
-            modifier = char.attributes.modifier(
-                ability.self_heal_attr if ability.self_heal_attr else "wis"
-            )
-            if (
-                ability.self_heal_attr == "int_"
-                and char.character_class == CharacterClass.CLERIC
-            ):
-                modifier = char.attributes.modifier("wis")
+            attr = ability.self_heal_attr if ability.self_heal_attr else "wis"
+            if attr == "int_" and char.character_class == CharacterClass.CLERIC:
+                attr = "wis"
+            modifier = char.attributes.modifier(attr)
             heal_raw = calculate_raw_damage(
                 ability.self_heal_base, modifier, ability.self_heal_scaling
             )
@@ -595,12 +617,23 @@ class BattleState:
             )
 
         for buff_def in ability.effects:
-            if buff_def.target == "enemy" and ability.target in (AbilityTarget.AOE, AbilityTarget.ADJACENT):
-                center = self._positions[agent] if ability.target == AbilityTarget.ADJACENT else target_pos
-                targets_in_area = self._get_characters_in_radius(center, ability.aoe_radius, agent)
+            if buff_def.target == "enemy" and ability.target in (
+                AbilityTarget.AOE,
+                AbilityTarget.ADJACENT,
+            ):
+                center = (
+                    self._positions[agent]
+                    if ability.target == AbilityTarget.ADJACENT
+                    else target_pos
+                )
+                targets_in_area = self._get_characters_in_radius(
+                    center, ability.aoe_radius, agent
+                )
                 caster_team = self._teams[agent]
                 for tid in targets_in_area:
-                    if self._teams[tid] != caster_team and not self._is_untargetable(tid):
+                    if self._teams[tid] != caster_team and not self._is_untargetable(
+                        tid
+                    ):
                         self._apply_buff_effect_to(agent, tid, ability, buff_def)
             else:
                 self._apply_buff_effect(agent, target_pos, ability, buff_def)
@@ -635,7 +668,11 @@ class BattleState:
         self._events.append({"type": "end_turn", "entity": agent, "next": next_agent})
 
     def _resolve_damage(
-        self, attacker_id: str, target_id: str, ability: Ability, no_evasion: bool = False
+        self,
+        attacker_id: str,
+        target_id: str,
+        ability: Ability,
+        no_evasion: bool = False,
     ) -> dict:
         attacker = self._characters[attacker_id]
         target = self._characters[target_id]
@@ -648,9 +685,15 @@ class BattleState:
 
         next_atk = self._effect_manager.get_effect(attacker_id, "next_attack_bonus")
         if next_atk:
-            damage_multiplier *= (1.0 + next_atk.value)
+            damage_multiplier *= 1.0 + next_atk.value
             self._effect_manager.remove_effects_by_tag(attacker_id, "next_attack_bonus")
-            self._events.append({"type": "next_attack_consumed", "entity": attacker_id, "bonus": next_atk.value})
+            self._events.append(
+                {
+                    "type": "next_attack_consumed",
+                    "entity": attacker_id,
+                    "bonus": next_atk.value,
+                }
+            )
 
         if ability.elemental_tag:
             combo = check_elemental_combo(
@@ -686,12 +729,11 @@ class BattleState:
         if ability.damage_type == "physical":
             attacker_dex = attacker.attributes.modifier("dex")
             defender_dex = (
-                0 if target.is_knocked_out or no_evasion else target.attributes.modifier("dex")
+                0
+                if target.is_knocked_out or no_evasion
+                else target.attributes.modifier("dex")
             )
             defender_con = target.attributes.modifier("con")
-
-            crit_rng = type("R", (), {"random": lambda self: self._rng.random()})()
-            crit_rng._rng = self._rng
 
             result = resolve_physical_attack(
                 base_damage=ability.damage_base,
@@ -798,7 +840,7 @@ class BattleState:
         )
 
     def _apply_buff_effect(
-        self, caster_id: str, target_pos: Position, ability: Ability, buff_def
+        self, caster_id: str, target_pos: Position, ability: Ability, buff_def: BuffDef
     ) -> None:
         char = self._characters[caster_id]
         value = buff_def.value
@@ -808,11 +850,23 @@ class BattleState:
             if attr == "int_" and char.character_class == CharacterClass.CLERIC:
                 attr = "wis"
             modifier = char.attributes.modifier(attr)
-            value = float(calculate_raw_damage(int(buff_def.value), modifier, buff_def.scaling_factor))
-        elif ability.shield_absorb_base > 0 and ability.shield_absorb_scaling > 0 and buff_def.effect_type == EffectType.SHIELD:
+            value = float(
+                calculate_raw_damage(
+                    int(buff_def.value), modifier, buff_def.scaling_factor
+                )
+            )
+        elif (
+            ability.shield_absorb_base > 0
+            and ability.shield_absorb_scaling > 0
+            and buff_def.effect_type == EffectType.SHIELD
+        ):
             attr = _get_scaling_attr(ability, char.character_class)
             modifier = char.attributes.modifier(attr)
-            value = float(calculate_raw_damage(ability.shield_absorb_base, modifier, ability.shield_absorb_scaling))
+            value = float(
+                calculate_raw_damage(
+                    ability.shield_absorb_base, modifier, ability.shield_absorb_scaling
+                )
+            )
 
         if buff_def.target == "self":
             target_id = caster_id
@@ -844,11 +898,16 @@ class BattleState:
         if not poison_buff:
             return
         poison_dot = Effect(
-            tag="poison", effect_type=EffectType.DOT,
-            source_entity_id=attacker_id, duration=2, value=poison_buff.value,
+            tag="poison",
+            effect_type=EffectType.DOT,
+            source_entity_id=attacker_id,
+            duration=2,
+            value=poison_buff.value,
         )
         self._effect_manager.apply_effect(target_id, poison_dot)
-        self._events.append({"type": "poison_applied", "attacker": attacker_id, "target": target_id})
+        self._events.append(
+            {"type": "poison_applied", "attacker": attacker_id, "target": target_id}
+        )
         poison_buff.duration -= 1
         if poison_buff.duration <= 0:
             self._effect_manager.remove_effects_by_tag(attacker_id, "poison_attacks")
@@ -864,7 +923,14 @@ class BattleState:
         if attacker.state == CharacterState.DEAD:
             return
         state = attacker.apply_damage(reflected)
-        self._events.append({"type": "reflect", "source": target_id, "target": attacker_id, "damage": reflected})
+        self._events.append(
+            {
+                "type": "reflect",
+                "source": target_id,
+                "target": attacker_id,
+                "damage": reflected,
+            }
+        )
         if state == CharacterState.DEAD:
             self._events.extend(self._handle_death(attacker_id))
         elif state == CharacterState.KNOCKED_OUT:
@@ -873,41 +939,47 @@ class BattleState:
     def _apply_redirect(self, target_id: str, damage: int) -> int:
         if damage <= 0:
             return damage
-        for eid in list(self._positions.keys()):
-            char = self._characters.get(eid)
-            if not char or char.state != CharacterState.ACTIVE:
-                continue
-            redirect_effect = self._effect_manager.get_effect(target_id, "redirect")
-            if not redirect_effect:
-                continue
-            redirector_id = redirect_effect.source_entity_id
-            redirector = self._characters.get(redirector_id)
-            if not redirector or redirector.state != CharacterState.ACTIVE:
-                continue
-            redirector_pos = self._positions.get(redirector_id)
-            target_pos = self._positions.get(target_id)
-            if not redirector_pos or not target_pos:
-                continue
-            dist = max(abs(redirector_pos.x - target_pos.x), abs(redirector_pos.y - target_pos.y))
-            if dist > 2:
-                continue
-            if redirector_id == target_id:
-                continue
-            redirected = int(damage * redirect_effect.value)
-            remaining = damage - redirected
-            state = redirector.apply_damage(redirected)
-            self._events.append({"type": "redirect", "from": target_id, "to": redirector_id, "damage": redirected})
-            if state == CharacterState.DEAD:
-                self._events.extend(self._handle_death(redirector_id))
-            elif state == CharacterState.KNOCKED_OUT:
-                self._events.append({"type": "knocked_out", "entity": redirector_id})
-            return max(1, remaining)
-        return damage
+        redirect_effect = self._effect_manager.get_effect(target_id, "redirect")
+        if not redirect_effect:
+            return damage
+        redirector_id = redirect_effect.source_entity_id
+        redirector = self._characters.get(redirector_id)
+        if not redirector or redirector.state != CharacterState.ACTIVE:
+            return damage
+        redirector_pos = self._positions.get(redirector_id)
+        target_pos = self._positions.get(target_id)
+        if not redirector_pos or not target_pos:
+            return damage
+        dist = max(
+            abs(redirector_pos.x - target_pos.x), abs(redirector_pos.y - target_pos.y)
+        )
+        if dist > 2:
+            return damage
+        if redirector_id == target_id:
+            return damage
+        redirected = int(damage * redirect_effect.value)
+        remaining = damage - redirected
+        state = redirector.apply_damage(redirected)
+        self._events.append(
+            {
+                "type": "redirect",
+                "from": target_id,
+                "to": redirector_id,
+                "damage": redirected,
+            }
+        )
+        if state == CharacterState.DEAD:
+            self._events.extend(self._handle_death(redirector_id))
+        elif state == CharacterState.KNOCKED_OUT:
+            self._events.append({"type": "knocked_out", "entity": redirector_id})
+        return max(1, remaining)
 
     def _is_untargetable(self, entity_id: str) -> bool:
         return self._effect_manager.has_effect(entity_id, "untargetable")
 
-    def _get_characters_in_radius(self, center: Position, radius: int, exclude_id: str = "") -> list[str]:
+    def _get_characters_in_radius(
+        self, center: Position, radius: int, exclude_id: str = ""
+    ) -> list[str]:
         result = []
         for eid, pos in self._positions.items():
             if eid == exclude_id:
@@ -920,8 +992,14 @@ class BattleState:
                 result.append(eid)
         return result
 
-    def _resolve_aoe_damage(self, attacker_id: str, target_pos: Position, ability: Ability) -> None:
-        center = self._positions[attacker_id] if ability.target == AbilityTarget.ADJACENT else target_pos
+    def _resolve_aoe_damage(
+        self, attacker_id: str, target_pos: Position, ability: Ability
+    ) -> None:
+        center = (
+            self._positions[attacker_id]
+            if ability.target == AbilityTarget.ADJACENT
+            else target_pos
+        )
         radius = ability.aoe_radius if ability.aoe_radius > 0 else 1
         targets = self._get_characters_in_radius(center, radius, attacker_id)
         caster_team = self._teams[attacker_id]
@@ -932,22 +1010,34 @@ class BattleState:
             if not ability.friendly_fire and self._teams[tid] == caster_team:
                 continue
             result = self._resolve_damage(attacker_id, tid, ability, no_evasion=True)
-            self._events.append({
-                "type": "aoe_hit", "ability": ability.id, "attacker": attacker_id,
-                "target": tid, "damage": result.get("damage", 0),
-            })
+            self._events.append(
+                {
+                    "type": "aoe_hit",
+                    "ability": ability.id,
+                    "attacker": attacker_id,
+                    "target": tid,
+                    "damage": result.get("damage", 0),
+                }
+            )
 
-    def _resolve_chain_damage(self, attacker_id: str, target_pos: Position, ability: Ability) -> None:
+    def _resolve_chain_damage(
+        self, attacker_id: str, target_pos: Position, ability: Ability
+    ) -> None:
         primary_id = self._find_character_at(target_pos)
         if not primary_id or self._is_untargetable(primary_id):
             return
 
         result = self._resolve_damage(attacker_id, primary_id, ability)
         primary_damage = result.get("damage", 0)
-        self._events.append({
-            "type": "chain_primary", "ability": ability.id, "attacker": attacker_id,
-            "target": primary_id, "damage": primary_damage,
-        })
+        self._events.append(
+            {
+                "type": "chain_primary",
+                "ability": ability.id,
+                "attacker": attacker_id,
+                "target": primary_id,
+                "damage": primary_damage,
+            }
+        )
 
         if primary_damage <= 0 or ability.chain_targets <= 0:
             return
@@ -970,26 +1060,36 @@ class BattleState:
                 candidates.append(eid)
 
         chain_damage = max(1, int(primary_damage * ability.chain_damage_pct))
-        for i, tid in enumerate(candidates[:ability.chain_targets]):
+        for i, tid in enumerate(candidates[: ability.chain_targets]):
             self._characters[tid].apply_damage(chain_damage)
-            self._events.append({
-                "type": "chain_secondary", "ability": ability.id,
-                "target": tid, "damage": chain_damage,
-            })
+            self._events.append(
+                {
+                    "type": "chain_secondary",
+                    "ability": ability.id,
+                    "target": tid,
+                    "damage": chain_damage,
+                }
+            )
             if self._characters[tid].state == CharacterState.DEAD:
                 self._events.extend(self._handle_death(tid))
             elif self._characters[tid].state == CharacterState.KNOCKED_OUT:
                 self._events.append({"type": "knocked_out", "entity": tid})
 
-    def _apply_buff_effect_to(self, caster_id: str, target_id: str, ability: Ability, buff_def) -> None:
-        char = self._characters[caster_id]
+    def _apply_buff_effect_to(
+        self, caster_id: str, target_id: str, ability: Ability, buff_def: BuffDef
+    ) -> None:
         value = buff_def.value
         effect = Effect(
-            tag=buff_def.tag, effect_type=buff_def.effect_type,
-            source_entity_id=caster_id, duration=buff_def.duration, value=value,
+            tag=buff_def.tag,
+            effect_type=buff_def.effect_type,
+            source_entity_id=caster_id,
+            duration=buff_def.duration,
+            value=value,
         )
         self._effect_manager.apply_effect(target_id, effect)
-        self._events.append({"type": "effect_applied", "target": target_id, "tag": buff_def.tag})
+        self._events.append(
+            {"type": "effect_applied", "target": target_id, "tag": buff_def.tag}
+        )
 
     def _find_character_at(self, pos: Position) -> str | None:
         for eid, p in self._positions.items():

@@ -33,7 +33,6 @@ class ArenaEnv(AECEnv):
         self._biome = biome
         self._battle: BattleState | None = None
         self._agent_teams: dict[str, str] = {}
-        self._agent_order: list[str] = []
         self._selector: agent_selector | None = None
 
         self.agents: list[str] = []

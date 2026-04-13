@@ -19,7 +19,13 @@ class TestEffectType:
 
 class TestEffect:
     def test_fields(self):
-        e = Effect(tag="bleed", effect_type=EffectType.DOT, source_entity_id="A", duration=3, value=4.0)
+        e = Effect(
+            tag="bleed",
+            effect_type=EffectType.DOT,
+            source_entity_id="A",
+            duration=3,
+            value=4.0,
+        )
         assert e.tag == "bleed"
         assert e.effect_type == EffectType.DOT
         assert e.source_entity_id == "A"
@@ -27,11 +33,22 @@ class TestEffect:
         assert e.value == 4.0
 
     def test_default_value(self):
-        e = Effect(tag="taunt", effect_type=EffectType.CONTROL, source_entity_id="A", duration=2)
+        e = Effect(
+            tag="taunt",
+            effect_type=EffectType.CONTROL,
+            source_entity_id="A",
+            duration=2,
+        )
         assert e.value == 0.0
 
     def test_mutable_duration(self):
-        e = Effect(tag="bleed", effect_type=EffectType.DOT, source_entity_id="A", duration=3, value=4.0)
+        e = Effect(
+            tag="bleed",
+            effect_type=EffectType.DOT,
+            source_entity_id="A",
+            duration=3,
+            value=4.0,
+        )
         e.duration -= 1
         assert e.duration == 2
 

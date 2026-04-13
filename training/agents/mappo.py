@@ -8,6 +8,7 @@ import torch.nn as nn
 
 from training.agents.buffer import RolloutBuffer
 from training.agents.networks import CriticNetwork, PolicyNetwork
+from training.environment.observations import OBS_TOTAL_SIZE
 
 _CLASS_NAMES = ["warrior", "mage", "cleric", "archer", "assassin"]
 
@@ -15,8 +16,7 @@ _CLASS_NAMES = ["warrior", "mage", "cleric", "archer", "assassin"]
 class MAPPOAgent:
     def __init__(
         self,
-        obs_size: int = 162,
-        global_state_size: int | None = None,
+        obs_size: int = OBS_TOTAL_SIZE,
         num_action_types: int = 10,
         num_targets: int = 80,
         lr: float = 3e-4,
@@ -26,14 +26,11 @@ class MAPPOAgent:
         max_grad_norm: float = 0.5,
         epochs: int = 4,
     ) -> None:
-        if global_state_size is None:
-            global_state_size = obs_size * 6
-
         self.policies: dict[str, PolicyNetwork] = {
             name: PolicyNetwork(obs_size, num_action_types, num_targets)
             for name in _CLASS_NAMES
         }
-        self.critic = CriticNetwork(global_state_size)
+        self.critic = CriticNetwork(obs_size)
 
         self._clip_range = clip_range
         self._entropy_coeff = entropy_coeff
@@ -84,7 +81,9 @@ class MAPPOAgent:
         ftm = torch.tensor(full_target_mask, dtype=torch.bool).unsqueeze(0)
 
         with torch.no_grad():
-            action, log_prob, entropy, used_mask = policy.get_action_hierarchical(obs_t, tm, ftm)
+            action, log_prob, entropy, used_mask = policy.get_action_hierarchical(
+                obs_t, tm, ftm
+            )
 
         return (
             (action[0].item(), action[1].item()),
@@ -93,23 +92,13 @@ class MAPPOAgent:
             used_mask.squeeze(0).numpy(),
         )
 
-    def get_value(self, global_state: np.ndarray) -> float:
-        state_t = torch.tensor(global_state, dtype=torch.float32).unsqueeze(0)
-        expected = self.critic.net[0].in_features
-        if state_t.shape[-1] < expected:
-            pad_size = expected - state_t.shape[-1]
-            state_t = torch.nn.functional.pad(state_t, (0, pad_size))
-        elif state_t.shape[-1] > expected:
-            state_t = state_t[:, :expected]
+    def get_value(self, obs: np.ndarray) -> float:
+        obs_t = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
         with torch.no_grad():
-            value = self.critic(state_t)
+            value = self.critic(obs_t)
         return value.item()
 
-    def update(
-        self,
-        buffer: RolloutBuffer,
-        class_map: dict[str, str] | None = None,
-    ) -> dict[str, float]:
+    def update(self, buffer: RolloutBuffer) -> dict[str, float]:
         buffer.compute_returns()
         total_policy_loss = 0.0
         total_value_loss = 0.0
@@ -132,35 +121,40 @@ class MAPPOAgent:
 
                     adv_batch = advantages
                     if adv_batch.numel() > 1 and adv_batch.std() > 1e-8:
-                        adv_batch = (adv_batch - adv_batch.mean()) / (adv_batch.std() + 1e-8)
+                        adv_batch = (adv_batch - adv_batch.mean()) / (
+                            adv_batch.std() + 1e-8
+                        )
 
                     new_log_probs, new_entropy = policy.evaluate_action(
-                        obs, (actions_type, actions_target), type_masks, target_masks,
+                        obs,
+                        (actions_type, actions_target),
+                        type_masks,
+                        target_masks,
                     )
                     ratio = torch.exp(new_log_probs - old_log_probs)
                     surr1 = ratio * adv_batch
-                    surr2 = torch.clamp(ratio, 1 - self._clip_range, 1 + self._clip_range) * adv_batch
+                    surr2 = (
+                        torch.clamp(ratio, 1 - self._clip_range, 1 + self._clip_range)
+                        * adv_batch
+                    )
                     policy_loss = -torch.min(surr1, surr2).mean()
                     entropy_bonus = new_entropy.mean()
 
-                    critic_input = batch.get("global_states")
-                    if critic_input is None:
-                        critic_input = obs
-                    if critic_input.shape[-1] != self.critic.net[0].in_features:
-                        expected = self.critic.net[0].in_features
-                        if critic_input.shape[-1] < expected:
-                            critic_input = torch.nn.functional.pad(critic_input, (0, expected - critic_input.shape[-1]))
-                        else:
-                            critic_input = critic_input[:, :expected]
-                    values = self.critic(critic_input).squeeze(-1)
+                    values = self.critic(obs).squeeze(-1)
                     value_loss = nn.functional.mse_loss(values, returns)
 
-                    loss = policy_loss + self._value_coeff * value_loss - self._entropy_coeff * entropy_bonus
+                    loss = (
+                        policy_loss
+                        + self._value_coeff * value_loss
+                        - self._entropy_coeff * entropy_bonus
+                    )
 
                     self._optimizer.zero_grad(set_to_none=True)
                     loss.backward()
                     nn.utils.clip_grad_norm_(policy.parameters(), self._max_grad_norm)
-                    nn.utils.clip_grad_norm_(self.critic.parameters(), self._max_grad_norm)
+                    nn.utils.clip_grad_norm_(
+                        self.critic.parameters(), self._max_grad_norm
+                    )
                     self._optimizer.step()
 
                     total_policy_loss += policy_loss.item()

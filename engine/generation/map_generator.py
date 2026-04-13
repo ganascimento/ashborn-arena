@@ -16,9 +16,24 @@ class Biome(Enum):
 
 
 _BIOME_POOLS: dict[Biome, list[ObjectType]] = {
-    Biome.FOREST_DAY: [ObjectType.TREE, ObjectType.BUSH, ObjectType.ROCK, ObjectType.PUDDLE],
-    Biome.FOREST_NIGHT: [ObjectType.TREE, ObjectType.BUSH, ObjectType.ROCK, ObjectType.PUDDLE],
-    Biome.VILLAGE: [ObjectType.CRATE, ObjectType.BARREL, ObjectType.ROCK, ObjectType.BUSH],
+    Biome.FOREST_DAY: [
+        ObjectType.TREE,
+        ObjectType.BUSH,
+        ObjectType.ROCK,
+        ObjectType.PUDDLE,
+    ],
+    Biome.FOREST_NIGHT: [
+        ObjectType.TREE,
+        ObjectType.BUSH,
+        ObjectType.ROCK,
+        ObjectType.PUDDLE,
+    ],
+    Biome.VILLAGE: [
+        ObjectType.CRATE,
+        ObjectType.BARREL,
+        ObjectType.ROCK,
+        ObjectType.BUSH,
+    ],
     Biome.SWAMP: [ObjectType.PUDDLE, ObjectType.BUSH, ObjectType.TREE],
 }
 
@@ -30,21 +45,17 @@ _ROWS = range(8)
 _CENTER_COLS = range(3, 7)
 
 
-def generate_map(
-    biome: Biome, rng: _random.Random
-) -> tuple[Grid, list[MapObject]]:
+def generate_map(biome: Biome, rng: _random.Random) -> tuple[Grid, list[MapObject]]:
     pool = _BIOME_POOLS[biome]
     total_objects = rng.randint(_MIN_OBJECTS, _MAX_OBJECTS)
 
     half = total_objects // 2
     extra = total_objects % 2
 
-    available_left: list[Position] = [
-        Position(x, y) for x in _LEFT_COLS for y in _ROWS
-    ]
+    available_left: list[Position] = [Position(x, y) for x in _LEFT_COLS for y in _ROWS]
     rng.shuffle(available_left)
 
-    left_positions: list[Position] = available_left[:half + extra]
+    left_positions: list[Position] = available_left[: half + extra]
     left_types: list[ObjectType] = [rng.choice(pool) for _ in left_positions]
 
     right_positions: list[Position] = []
@@ -65,7 +76,9 @@ def generate_map(
     remaining_needed = total_objects - len(left_positions) - len(right_positions)
     if remaining_needed > 0:
         available_right = [
-            Position(x, y) for x in _RIGHT_COLS for y in _ROWS
+            Position(x, y)
+            for x in _RIGHT_COLS
+            for y in _ROWS
             if Position(x, y) not in used
         ]
         rng.shuffle(available_right)
@@ -80,9 +93,7 @@ def generate_map(
     all_positions, all_types = _ensure_center_blocking(
         all_positions, all_types, pool, used, rng
     )
-    all_positions, all_types = _ensure_open_corridor(
-        all_positions, all_types, used
-    )
+    all_positions, all_types = _ensure_open_corridor(all_positions, all_types, used)
 
     grid = Grid()
     objects: list[MapObject] = []
@@ -114,7 +125,8 @@ def _ensure_center_blocking(
         return positions, types
 
     center_blocking = sum(
-        1 for pos, t in zip(positions, types)
+        1
+        for pos, t in zip(positions, types)
         if 3 <= pos.x <= 6 and OBJECT_TEMPLATES[t].blocks_movement
     )
 
@@ -127,7 +139,9 @@ def _ensure_center_blocking(
                     break
         else:
             available = [
-                Position(x, y) for x in _CENTER_COLS for y in _ROWS
+                Position(x, y)
+                for x in _CENTER_COLS
+                for y in _ROWS
                 if Position(x, y) not in used
             ]
             if available:
@@ -148,14 +162,12 @@ def _ensure_open_corridor(
     used: set[Position],
 ) -> tuple[list[Position], list[ObjectType]]:
     blocking_positions = {
-        pos for pos, t in zip(positions, types)
-        if OBJECT_TEMPLATES[t].blocks_movement
+        pos for pos, t in zip(positions, types) if OBJECT_TEMPLATES[t].blocks_movement
     }
 
     for row in range(8):
         row_clear = all(
-            Position(col, row) not in blocking_positions
-            for col in range(2, 8)
+            Position(col, row) not in blocking_positions for col in range(2, 8)
         )
         if row_clear:
             return positions, types
@@ -164,8 +176,7 @@ def _ensure_open_corridor(
     min_blockers = 999
     for row in range(8):
         count = sum(
-            1 for col in range(2, 8)
-            if Position(col, row) in blocking_positions
+            1 for col in range(2, 8) if Position(col, row) in blocking_positions
         )
         if count < min_blockers:
             min_blockers = count
@@ -173,7 +184,11 @@ def _ensure_open_corridor(
 
     to_remove: list[int] = []
     for i, (pos, t) in enumerate(zip(positions, types)):
-        if pos.y == best_row and OBJECT_TEMPLATES[t].blocks_movement and 2 <= pos.x <= 7:
+        if (
+            pos.y == best_row
+            and OBJECT_TEMPLATES[t].blocks_movement
+            and 2 <= pos.x <= 7
+        ):
             to_remove.append(i)
 
     for idx in reversed(to_remove):

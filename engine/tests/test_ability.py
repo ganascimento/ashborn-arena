@@ -7,7 +7,7 @@ from engine.models.ability import (
     AbilityTarget,
     BuffDef,
 )
-from engine.models.character import BASE_ATTRIBUTES, CharacterClass
+from engine.models.character import CharacterClass
 from engine.models.effect import EffectType
 from engine.systems.damage import calculate_raw_damage
 
@@ -27,7 +27,9 @@ class TestAbilityTarget:
 
 class TestBuffDef:
     def test_creation(self):
-        b = BuffDef(tag="dr", effect_type=EffectType.BUFF, value=0.30, duration=2, target="self")
+        b = BuffDef(
+            tag="dr", effect_type=EffectType.BUFF, value=0.30, duration=2, target="self"
+        )
         assert b.tag == "dr"
         assert b.effect_type == EffectType.BUFF
         assert b.value == pytest.approx(0.30)
@@ -39,8 +41,12 @@ class TestBuffDef:
 class TestAbilityDefaults:
     def test_minimal_creation(self):
         a = Ability(
-            id="test", name="Test", pa_cost=1, cooldown=0,
-            classes=(CharacterClass.WARRIOR,), target=AbilityTarget.SELF,
+            id="test",
+            name="Test",
+            pa_cost=1,
+            cooldown=0,
+            classes=(CharacterClass.WARRIOR,),
+            target=AbilityTarget.SELF,
         )
         assert a.damage_base == 0
         assert a.damage_scaling == 0.0
@@ -254,7 +260,7 @@ class TestSharedChamaSagrada:
         assert ability.self_heal_scaling == pytest.approx(0.3)
 
     def test_elemental(self, ability):
-        assert ability.elemental_tag == "fogo"
+        assert ability.elemental_tag == "fire"
 
 
 class TestSharedBarreiraArcana:
@@ -405,7 +411,7 @@ class TestMagoExclusives:
         assert a.damage_type == "magical"
         assert a.aoe_radius == 1
         assert a.friendly_fire is True
-        assert a.elemental_tag == "fogo"
+        assert a.elemental_tag == "fire"
 
     def test_arco_voltaico(self):
         a = ABILITIES["arco_voltaico"]
@@ -416,7 +422,7 @@ class TestMagoExclusives:
         assert a.damage_type == "magical"
         assert a.chain_targets == 2
         assert a.chain_damage_pct == pytest.approx(0.70)
-        assert a.elemental_tag == "eletrico"
+        assert a.elemental_tag == "electric"
 
     def test_meteoro(self):
         a = ABILITIES["meteoro"]
@@ -446,7 +452,7 @@ class TestMagoExclusives:
         a = ABILITIES["toque_do_inverno"]
         assert a.damage_base == 8
         assert a.damage_scaling == pytest.approx(0.8)
-        assert a.elemental_tag == "gelo"
+        assert a.elemental_tag == "ice"
         slow = [e for e in a.effects if e.tag == "slow"]
         assert len(slow) == 1
         assert slow[0].duration == 2
@@ -534,7 +540,7 @@ class TestArqueiroExclusives:
         assert a.cooldown == 3
         assert a.damage_base == 6
         assert a.damage_scaling == pytest.approx(0.8)
-        assert a.elemental_tag == "veneno"
+        assert a.elemental_tag == "poison"
         poison = [e for e in a.effects if e.tag == "poison"]
         assert len(poison) == 1
         assert poison[0].effect_type == EffectType.DOT
@@ -547,7 +553,7 @@ class TestArqueiroExclusives:
         assert a.cooldown == 3
         assert a.damage_base == 7
         assert a.damage_scaling == pytest.approx(0.8)
-        assert a.elemental_tag == "gelo"
+        assert a.elemental_tag == "ice"
         immobilize = [e for e in a.effects if e.tag == "immobilize"]
         assert len(immobilize) == 1
         assert immobilize[0].duration == 1

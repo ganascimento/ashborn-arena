@@ -3,7 +3,12 @@ from __future__ import annotations
 from engine.models.effect import Effect, EffectType
 
 _TICK_TYPES = {EffectType.DOT, EffectType.HOT}
-_DURATION_TYPES = {EffectType.BUFF, EffectType.DEBUFF, EffectType.CONTROL, EffectType.SHIELD}
+_DURATION_TYPES = {
+    EffectType.BUFF,
+    EffectType.DEBUFF,
+    EffectType.CONTROL,
+    EffectType.SHIELD,
+}
 _NEGATIVE_TYPES = {EffectType.DEBUFF, EffectType.CONTROL}
 
 
@@ -26,7 +31,10 @@ class EffectManager:
                     return
         else:
             for existing in effects:
-                if existing.tag == effect.tag and existing.effect_type == effect.effect_type:
+                if (
+                    existing.tag == effect.tag
+                    and existing.effect_type == effect.effect_type
+                ):
                     existing.duration = effect.duration
                     existing.value = effect.value
                     existing.source_entity_id = effect.source_entity_id
@@ -37,8 +45,12 @@ class EffectManager:
     def get_effects(self, entity_id: str) -> list[Effect]:
         return list(self._effects.get(entity_id, []))
 
-    def get_effects_by_type(self, entity_id: str, effect_type: EffectType) -> list[Effect]:
-        return [e for e in self._effects.get(entity_id, []) if e.effect_type == effect_type]
+    def get_effects_by_type(
+        self, entity_id: str, effect_type: EffectType
+    ) -> list[Effect]:
+        return [
+            e for e in self._effects.get(entity_id, []) if e.effect_type == effect_type
+        ]
 
     def has_effect(self, entity_id: str, tag: str) -> bool:
         return any(e.tag == tag for e in self._effects.get(entity_id, []))
@@ -58,7 +70,9 @@ class EffectManager:
     def remove_all_negative(self, entity_id: str) -> list[Effect]:
         effects = self._effects.get(entity_id, [])
         removed = [e for e in effects if e.effect_type in _NEGATIVE_TYPES]
-        self._effects[entity_id] = [e for e in effects if e.effect_type not in _NEGATIVE_TYPES]
+        self._effects[entity_id] = [
+            e for e in effects if e.effect_type not in _NEGATIVE_TYPES
+        ]
         return removed
 
     def remove_entity(self, entity_id: str) -> None:

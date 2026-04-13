@@ -2,7 +2,6 @@ import os
 import tempfile
 
 import numpy as np
-import pytest
 
 from training.agents.buffer import RolloutBuffer
 from training.agents.mappo import MAPPOAgent
@@ -11,7 +10,6 @@ from training.curriculum.self_play import SelfPlayPool
 from training.curriculum.trainer import Trainer
 
 OBS_SIZE = 162
-GLOBAL_SIZE = OBS_SIZE * 6
 NUM_TYPES = 10
 NUM_TARGETS = 80
 
@@ -53,13 +51,13 @@ class TestSelfPlayPool:
 
     def test_add_snapshot(self):
         pool = SelfPlayPool(max_size=5)
-        agent = MAPPOAgent(obs_size=OBS_SIZE, global_state_size=GLOBAL_SIZE)
+        agent = MAPPOAgent(obs_size=OBS_SIZE)
         pool.add_snapshot(agent)
         assert pool.size == 1
 
     def test_sample_opponent(self):
         pool = SelfPlayPool(max_size=5)
-        agent = MAPPOAgent(obs_size=OBS_SIZE, global_state_size=GLOBAL_SIZE)
+        agent = MAPPOAgent(obs_size=OBS_SIZE)
         pool.add_snapshot(agent)
         snapshot = pool.sample_opponent()
         assert snapshot is not None
@@ -67,65 +65,27 @@ class TestSelfPlayPool:
 
     def test_max_size_respected(self):
         pool = SelfPlayPool(max_size=3)
-        agent = MAPPOAgent(obs_size=OBS_SIZE, global_state_size=GLOBAL_SIZE)
+        agent = MAPPOAgent(obs_size=OBS_SIZE)
         for _ in range(5):
             pool.add_snapshot(agent)
         assert pool.size == 3
 
     def test_load_into_agent(self):
         pool = SelfPlayPool(max_size=5)
-        agent = MAPPOAgent(obs_size=OBS_SIZE, global_state_size=GLOBAL_SIZE)
+        agent = MAPPOAgent(obs_size=OBS_SIZE)
         pool.add_snapshot(agent)
         snapshot = pool.sample_opponent()
-        agent2 = MAPPOAgent(obs_size=OBS_SIZE, global_state_size=GLOBAL_SIZE)
+        agent2 = MAPPOAgent(obs_size=OBS_SIZE)
         pool.load_into(agent2, snapshot)
-
-
-class TestRolloutBufferGlobalState:
-    def test_add_with_global_state(self):
-        buf = RolloutBuffer()
-        buf.add(
-            agent_id="a",
-            obs=np.zeros(OBS_SIZE, dtype=np.float32),
-            action=(0, 0),
-            log_prob=-1.0,
-            reward=0.0,
-            value=0.0,
-            done=False,
-            type_mask=np.ones(NUM_TYPES, dtype=bool),
-            target_mask=np.ones(NUM_TARGETS, dtype=bool),
-            global_state=np.zeros(GLOBAL_SIZE, dtype=np.float32),
-        )
-        assert buf.size("a") == 1
-
-    def test_get_batches_includes_global_states(self):
-        buf = RolloutBuffer()
-        for i in range(32):
-            buf.add(
-                agent_id="a",
-                obs=np.random.randn(OBS_SIZE).astype(np.float32),
-                action=(0, 0),
-                log_prob=-1.0,
-                reward=0.1,
-                value=0.5,
-                done=i == 31,
-                type_mask=np.ones(NUM_TYPES, dtype=bool),
-                target_mask=np.ones(NUM_TARGETS, dtype=bool),
-                global_state=np.random.randn(GLOBAL_SIZE).astype(np.float32),
-            )
-        buf.compute_returns()
-        batches = list(buf.get_batches(batch_size=32))
-        assert len(batches) >= 1
-        assert "global_states" in batches[0]
-        assert batches[0]["global_states"].shape[1] == GLOBAL_SIZE
 
 
 class TestTrainer:
     def test_collect_rollout_fills_buffer(self):
-        agent = MAPPOAgent(obs_size=OBS_SIZE, global_state_size=GLOBAL_SIZE)
+        agent = MAPPOAgent(obs_size=OBS_SIZE)
         trainer = Trainer(agent, seed=42)
         buf = RolloutBuffer()
         from training.environment.arena_env import ArenaEnv
+
         env = ArenaEnv(team_size=1)
         stats = trainer.collect_rollout(env, buf)
         total = sum(buf.size(aid) for aid in buf._data)
@@ -133,7 +93,7 @@ class TestTrainer:
         assert "winner" in stats
 
     def test_train_phase_runs(self):
-        agent = MAPPOAgent(obs_size=OBS_SIZE, global_state_size=GLOBAL_SIZE)
+        agent = MAPPOAgent(obs_size=OBS_SIZE)
         trainer = Trainer(agent, seed=42)
         phase = PhaseConfig(
             phase_number=1,
@@ -149,7 +109,7 @@ class TestTrainer:
         assert "episodes_completed" in stats
 
     def test_checkpoint_saved(self):
-        agent = MAPPOAgent(obs_size=OBS_SIZE, global_state_size=GLOBAL_SIZE)
+        agent = MAPPOAgent(obs_size=OBS_SIZE)
         trainer = Trainer(agent, seed=42)
         with tempfile.TemporaryDirectory() as tmpdir:
             phase = PhaseConfig(

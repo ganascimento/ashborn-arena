@@ -28,7 +28,14 @@ class TrainingLogger:
         self._global_start = time.time()
         self._log_file.write_text("")
 
-    def start_phase(self, phase_number: int, team_sizes: list[int], episodes: int) -> None:
+    def start_phase(
+        self,
+        phase_number: int,
+        team_sizes: list[int],
+        episodes: int,
+        episode_offset: int = 0,
+        update_offset: int = 0,
+    ) -> None:
         self._current_phase = phase_number
         self._phase_start = time.time()
         self._phase_rewards.clear()
@@ -36,11 +43,15 @@ class TrainingLogger:
         self._reward_window.clear()
         self._steps_window.clear()
         self._wins_window.clear()
+        self._episode_count = episode_offset
+        self._update_count = update_offset
 
         msg = f"Phase {phase_number} | teams={team_sizes} | {episodes} episodes"
-        print(f"\n{'='*60}")
+        if episode_offset:
+            msg += f" | resuming from ep {episode_offset}"
+        print(f"\n{'=' * 60}")
         print(f"  {msg}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
     def log_episode(self, episode: int, stats: dict) -> None:
         self._episode_count += 1
@@ -103,11 +114,15 @@ class TrainingLogger:
         n = len(self._phase_rewards)
         avg_r = sum(self._phase_rewards) / max(n, 1)
         avg_s = sum(self._phase_steps) / max(n, 1)
-        print(f"  Phase {self._current_phase} done: {n} eps, {elapsed:.0f}s, avg_r={avg_r:.1f}, avg_steps={avg_s:.1f}")
+        print(
+            f"  Phase {self._current_phase} done: {n} eps, {elapsed:.0f}s, avg_r={avg_r:.1f}, avg_steps={avg_s:.1f}"
+        )
         if checkpoint_dir:
             print(f"  Checkpoint: {checkpoint_dir}/")
 
     def end_training(self) -> None:
         total = time.time() - self._global_start
-        print(f"\nTraining complete: {self._episode_count} episodes, {self._update_count} updates, {total:.0f}s")
+        print(
+            f"\nTraining complete: {self._episode_count} episodes, {self._update_count} updates, {total:.0f}s"
+        )
         print(f"Log: {self._log_file}")

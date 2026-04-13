@@ -31,10 +31,6 @@ def _pos_to_idx(pos: Position) -> int:
     return pos.y * 10 + pos.x
 
 
-def _idx_to_pos(idx: int) -> Position:
-    return Position(idx % 10, idx // 10)
-
-
 def compute_action_mask(battle_state: BattleState, agent_id: str) -> dict:
     type_mask = np.zeros(NUM_ACTION_TYPES, dtype=bool)
     target_mask = np.zeros((NUM_ACTION_TYPES, NUM_TARGETS), dtype=bool)
@@ -81,7 +77,9 @@ def compute_action_mask(battle_state: BattleState, agent_id: str) -> dict:
             if em.has_effect(eid, "untargetable"):
                 continue
             epos = battle_state.get_position(eid)
-            effective_range = basic.max_range + (range_bonus if basic.max_range > 1 else 0)
+            effective_range = basic.max_range + (
+                range_bonus if basic.max_range > 1 else 0
+            )
             dist = max(abs(epos.x - pos.x), abs(epos.y - pos.y))
             if dist > effective_range:
                 continue
@@ -114,7 +112,9 @@ def compute_action_mask(battle_state: BattleState, agent_id: str) -> dict:
                 if em.has_effect(eid, "untargetable"):
                     continue
                 epos = battle_state.get_position(eid)
-                eff_range = ability.max_range + (range_bonus if ability.max_range > 1 else 0)
+                eff_range = ability.max_range + (
+                    range_bonus if ability.max_range > 1 else 0
+                )
                 dist = max(abs(epos.x - pos.x), abs(epos.y - pos.y))
                 if dist > eff_range:
                     continue

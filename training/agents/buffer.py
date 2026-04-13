@@ -10,10 +10,18 @@ class RolloutBuffer:
     def __init__(self) -> None:
         self._data: dict[str, dict[str, list]] = defaultdict(
             lambda: {
-                "obs": [], "actions_type": [], "actions_target": [],
-                "log_probs": [], "rewards": [], "values": [], "dones": [],
-                "type_masks": [], "target_masks": [], "global_states": [],
-                "advantages": [], "returns": [],
+                "obs": [],
+                "actions_type": [],
+                "actions_target": [],
+                "log_probs": [],
+                "rewards": [],
+                "values": [],
+                "dones": [],
+                "type_masks": [],
+                "target_masks": [],
+                "global_states": [],
+                "advantages": [],
+                "returns": [],
             }
         )
 
@@ -70,7 +78,11 @@ class RolloutBuffer:
                     next_value = d["values"][t + 1]
                     next_non_terminal = 1.0 - float(d["dones"][t])
 
-                delta = d["rewards"][t] + gamma * next_value * next_non_terminal - d["values"][t]
+                delta = (
+                    d["rewards"][t]
+                    + gamma * next_value * next_non_terminal
+                    - d["values"][t]
+                )
                 last_gae = delta + gamma * gae_lambda * next_non_terminal * last_gae
                 advantages[t] = last_gae
 
@@ -98,9 +110,15 @@ class RolloutBuffer:
                 cn = class_names[i] if i < len(class_names) else ""
                 if cn not in by_class:
                     by_class[cn] = {
-                        "obs": [], "actions_type": [], "actions_target": [],
-                        "log_probs": [], "advantages": [], "returns": [],
-                        "type_masks": [], "target_masks": [], "global_states": [],
+                        "obs": [],
+                        "actions_type": [],
+                        "actions_target": [],
+                        "log_probs": [],
+                        "advantages": [],
+                        "returns": [],
+                        "type_masks": [],
+                        "target_masks": [],
+                        "global_states": [],
                     }
                 bc = by_class[cn]
                 bc["obs"].append(d["obs"][i])
@@ -126,18 +144,36 @@ class RolloutBuffer:
                 end = min(start + batch_size, n)
                 idx = indices[start:end]
                 batch = {
-                    "obs": torch.tensor(np.array([pool["obs"][i] for i in idx]), dtype=torch.float32),
-                    "actions_type": torch.tensor([pool["actions_type"][i] for i in idx], dtype=torch.long),
-                    "actions_target": torch.tensor([pool["actions_target"][i] for i in idx], dtype=torch.long),
-                    "old_log_probs": torch.tensor([pool["log_probs"][i] for i in idx], dtype=torch.float32),
-                    "advantages": torch.tensor([pool["advantages"][i] for i in idx], dtype=torch.float32),
-                    "returns": torch.tensor([pool["returns"][i] for i in idx], dtype=torch.float32),
-                    "type_masks": torch.tensor(np.array([pool["type_masks"][i] for i in idx]), dtype=torch.bool),
-                    "target_masks": torch.tensor(np.array([pool["target_masks"][i] for i in idx]), dtype=torch.bool),
+                    "obs": torch.tensor(
+                        np.array([pool["obs"][i] for i in idx]), dtype=torch.float32
+                    ),
+                    "actions_type": torch.tensor(
+                        [pool["actions_type"][i] for i in idx], dtype=torch.long
+                    ),
+                    "actions_target": torch.tensor(
+                        [pool["actions_target"][i] for i in idx], dtype=torch.long
+                    ),
+                    "old_log_probs": torch.tensor(
+                        [pool["log_probs"][i] for i in idx], dtype=torch.float32
+                    ),
+                    "advantages": torch.tensor(
+                        [pool["advantages"][i] for i in idx], dtype=torch.float32
+                    ),
+                    "returns": torch.tensor(
+                        [pool["returns"][i] for i in idx], dtype=torch.float32
+                    ),
+                    "type_masks": torch.tensor(
+                        np.array([pool["type_masks"][i] for i in idx]), dtype=torch.bool
+                    ),
+                    "target_masks": torch.tensor(
+                        np.array([pool["target_masks"][i] for i in idx]),
+                        dtype=torch.bool,
+                    ),
                 }
                 if has_global:
                     batch["global_states"] = torch.tensor(
-                        np.array([pool["global_states"][i] for i in idx]), dtype=torch.float32
+                        np.array([pool["global_states"][i] for i in idx]),
+                        dtype=torch.float32,
                     )
                 batches.append(batch)
             result[cn] = batches
@@ -172,14 +208,28 @@ class RolloutBuffer:
             end = min(start + batch_size, n)
             idx = indices[start:end]
             batch = {
-                "obs": torch.tensor(np.array([all_obs[i] for i in idx]), dtype=torch.float32),
-                "actions_type": torch.tensor([all_at[i] for i in idx], dtype=torch.long),
-                "actions_target": torch.tensor([all_atrg[i] for i in idx], dtype=torch.long),
-                "old_log_probs": torch.tensor([all_lp[i] for i in idx], dtype=torch.float32),
-                "advantages": torch.tensor([all_adv[i] for i in idx], dtype=torch.float32),
+                "obs": torch.tensor(
+                    np.array([all_obs[i] for i in idx]), dtype=torch.float32
+                ),
+                "actions_type": torch.tensor(
+                    [all_at[i] for i in idx], dtype=torch.long
+                ),
+                "actions_target": torch.tensor(
+                    [all_atrg[i] for i in idx], dtype=torch.long
+                ),
+                "old_log_probs": torch.tensor(
+                    [all_lp[i] for i in idx], dtype=torch.float32
+                ),
+                "advantages": torch.tensor(
+                    [all_adv[i] for i in idx], dtype=torch.float32
+                ),
                 "returns": torch.tensor([all_ret[i] for i in idx], dtype=torch.float32),
-                "type_masks": torch.tensor(np.array([all_tm[i] for i in idx]), dtype=torch.bool),
-                "target_masks": torch.tensor(np.array([all_trgm[i] for i in idx]), dtype=torch.bool),
+                "type_masks": torch.tensor(
+                    np.array([all_tm[i] for i in idx]), dtype=torch.bool
+                ),
+                "target_masks": torch.tensor(
+                    np.array([all_trgm[i] for i in idx]), dtype=torch.bool
+                ),
             }
             if has_global:
                 batch["global_states"] = torch.tensor(

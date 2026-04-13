@@ -1,13 +1,17 @@
 import numpy as np
-import torch
 import pytest
+import torch
 
-from training.agents.mappo import MAPPOAgent
 from training.agents.buffer import RolloutBuffer
+from training.agents.mappo import MAPPOAgent
 from training.curriculum.trainer import Trainer
+from training.environment.actions import NUM_ACTION_TYPES
 from training.environment.arena_env import ArenaEnv
-from training.environment.observations import OBS_TOTAL_SIZE, GLOBAL_STATE_SIZE, encode_global_state
-from training.environment.actions import NUM_ACTION_TYPES, NUM_TARGETS
+from training.environment.observations import (
+    GLOBAL_STATE_SIZE,
+    OBS_TOTAL_SIZE,
+    encode_global_state,
+)
 
 
 @pytest.fixture
@@ -74,7 +78,9 @@ class TestActionMaskingIntegrity:
                 char.character_class.value, env.observe(aid), tm, ftm
             )
             assert tm[action[0]], f"selected invalid type {action[0]}"
-            assert ftm[action[0], action[1]], f"selected invalid target {action[1]} for type {action[0]}"
+            assert ftm[action[0], action[1]], (
+                f"selected invalid target {action[1]} for type {action[0]}"
+            )
             env.step(np.array([action[0], action[1]]))
             if all(env.terminations.values()):
                 break
@@ -93,8 +99,9 @@ class TestBufferDataIntegrity:
             assert len(d["dones"]) == n
             assert len(d["type_masks"]) == n
             assert len(d["target_masks"]) == n
-            assert len(d["global_states"]) == n, f"{aid}: gs={len(d['global_states'])} vs {n}"
-            assert len(d.get("class_names", [])) == n, f"{aid}: cn={len(d.get('class_names',[]))} vs {n}"
+            assert len(d.get("class_names", [])) == n, (
+                f"{aid}: cn={len(d.get('class_names', []))} vs {n}"
+            )
 
     def test_last_entry_has_done_true(self, setup):
         _, _, buf = setup
@@ -173,16 +180,21 @@ class TestPPORatios:
             policy = agent.policies[cn]
             with torch.no_grad():
                 new_lp, _ = policy.evaluate_action(
-                    batch["obs"], (batch["actions_type"], batch["actions_target"]),
-                    batch["type_masks"], batch["target_masks"]
+                    batch["obs"],
+                    (batch["actions_type"], batch["actions_target"]),
+                    batch["type_masks"],
+                    batch["target_masks"],
                 )
             ratio = torch.exp(new_lp - batch["old_log_probs"])
-            assert torch.allclose(ratio, torch.ones_like(ratio), atol=1e-5), \
+            assert torch.allclose(ratio, torch.ones_like(ratio), atol=1e-5), (
                 f"{cn}: ratio mean={ratio.mean():.6f}, std={ratio.std():.6f}"
+            )
 
     def test_update_changes_weights(self, setup):
         agent, _, buf = setup
-        w_before = {n: p.type_head.weight.data.clone() for n, p in agent.policies.items()}
+        w_before = {
+            n: p.type_head.weight.data.clone() for n, p in agent.policies.items()
+        }
         result = agent.update(buf)
         assert np.isfinite(result["policy_loss"])
         assert np.isfinite(result["value_loss"])
@@ -217,5 +229,6 @@ class TestTerminalRewards:
                     if sum(d["rewards"]) < 0:
                         losers_with_defeat += 1
         assert losers_total > 0, "no losers found in 15 episodes"
-        assert losers_with_defeat == losers_total, \
+        assert losers_with_defeat == losers_total, (
             f"only {losers_with_defeat}/{losers_total} losers see negative reward"
+        )
