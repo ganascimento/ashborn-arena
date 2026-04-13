@@ -1,0 +1,72 @@
+# Ashborn Arena — Estado de Desenvolvimento
+
+Este arquivo mantem o estado atual do desenvolvimento de cada feature do projeto.
+
+## Estrategia de Implementacao
+
+1. **Game Engine** — Motor do jogo em Python puro (regras, combate, grid, habilidades)
+2. **Ambiente PettingZoo** — Wrapper do engine para treinamento RL
+3. **MAPPO (RL)** — Treinamento da IA multi-agente via curriculum learning
+4. **Interface Visual** — 2D top-down jogavel
+
+## Especificacao
+
+| Area                       | Status   | Referencia                          |
+| -------------------------- | -------- | ----------------------------------- |
+| Mecanica de batalha        | Definida | prd.md secoes 2.1-2.6               |
+| Classes e habilidades (47) | Definida | prd.md secao 3, design.md secao 2.7 |
+| Atributos e formulas       | Definida | prd.md secao 5, design.md secao 3   |
+| Campo de batalha           | Definido | prd.md secao 6, design.md secao 4   |
+| Sistema de IA              | Definido | prd.md secao 4, design.md secao 5   |
+| Interface e UX             | Definida | prd.md secao 7                      |
+
+## Features
+
+### Setup
+
+| #   | Feature                     | Status    | Dep. | Spec                                                     |
+| --- | --------------------------- | --------- | ---- | -------------------------------------------------------- |
+| 0   | Project setup e scaffolding | concluida | —    | [features/00_project_setup/](features/00_project_setup/) |
+
+### Game Engine (engine/)
+
+| #   | Feature                         | Status   | Dep.  | Spec                                                                                   |
+| --- | ------------------------------- | -------- | ----- | -------------------------------------------------------------------------------------- |
+| 1   | Grid e movimentacao             | concluida  | —     | [features/01_grid_movimentacao/](features/01_grid_movimentacao/)                       |
+| 2   | Sistema de turnos e PA          | concluida | 1     | [features/02_sistema_turnos_pa/](features/02_sistema_turnos_pa/)                       |
+| 3   | Atributos, modificadores e HP   | concluida | —     | [features/03_atributos_modificadores_hp/](features/03_atributos_modificadores_hp/)     |
+| 4   | Pipeline de dano                | concluida | 3     | [features/04_pipeline_dano/](features/04_pipeline_dano/)                               |
+| 5   | Sistema de efeitos              | concluida | 4     | [features/05_sistema_efeitos/](features/05_sistema_efeitos/)                           |
+| 6   | Habilidades (47 definicoes)     | concluida | 5     | [features/06_habilidades_47/](features/06_habilidades_47/)                             |
+| 7   | Status effects e elemental      | concluida | 5     | [features/07_status_effects_elemental/](features/07_status_effects_elemental/)         |
+| 8   | Knockout, morte e revivificacao | concluida | 4     | [features/08_knockout_morte_revivificacao/](features/08_knockout_morte_revivificacao/) |
+| 9   | Ataque de oportunidade          | concluida | 1, 4  | [features/09_ataque_oportunidade/](features/09_ataque_oportunidade/)                   |
+| 10  | Objetos interativos             | concluida | 1     | [features/10_objetos_interativos/](features/10_objetos_interativos/)                   |
+| 11  | Linha de visao e cobertura      | concluida | 1, 10 | [features/11_linha_visao_cobertura/](features/11_linha_visao_cobertura/)               |
+| 12  | Geracao procedural de mapas     | concluida | 10    | [features/12_geracao_procedural_mapas/](features/12_geracao_procedural_mapas/)         |
+
+### Treinamento (training/)
+
+| #   | Feature                   | Status   | Dep. | Spec                                                                     |
+| --- | ------------------------- | -------- | ---- | ------------------------------------------------------------------------ |
+| 13  | Ambiente PettingZoo       | pendente | 1-12 | [features/13_ambiente_pettingzoo/](features/13_ambiente_pettingzoo/)     |
+| 14  | MAPPO — redes e algoritmo | pendente | 13   | [features/14_mappo_redes_algoritmo/](features/14_mappo_redes_algoritmo/) |
+| 15  | Training pipeline         | pendente | 14   | [features/15_training_pipeline/](features/15_training_pipeline/)         |
+
+### Backend (backend/)
+
+| #   | Feature       | Status   | Dep. | Spec                                                     |
+| --- | ------------- | -------- | ---- | -------------------------------------------------------- |
+| 16  | API REST      | pendente | 1-12 | [features/16_api_rest/](features/16_api_rest/)           |
+| 17  | API WebSocket | pendente | 16   | [features/17_api_websocket/](features/17_api_websocket/) |
+| 18  | Inference IA  | pendente | 17   | [features/18_inference_ia/](features/18_inference_ia/)   |
+
+### Frontend (frontend/)
+
+| #   | Feature                     | Status   | Dep. | Spec                                                                         |
+| --- | --------------------------- | -------- | ---- | ---------------------------------------------------------------------------- |
+| 19  | Setup — menu e preparacao   | pendente | 16   | [features/19_setup_menu_preparacao/](features/19_setup_menu_preparacao/)     |
+| 20  | Batalha — grid e rendering  | pendente | 17   | [features/20_batalha_grid_rendering/](features/20_batalha_grid_rendering/)   |
+| 21  | Batalha — acoes e animacoes | pendente | 20   | [features/21_batalha_acoes_animacoes/](features/21_batalha_acoes_animacoes/) |
+| 22  | Batalha — HUD e feedback    | pendente | 20   | [features/22_batalha_hud_feedback/](features/22_batalha_hud_feedback/)       |
+| 23  | Resultado                   | pendente | 17   | [features/23_resultado/](features/23_resultado/)                             |

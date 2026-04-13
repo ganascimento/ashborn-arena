@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(find /home/gan/projects/nexus-twin -type f -name *.py)",
+      "Bash(for dir:*)",
+      "Bash(do)",
+      "Bash(touch \"$dir/specs.md\" \"$dir/tasks.md\")",
+      "Bash(done)",
+      "Bash(for f:*)",
+      "Bash(do wc:*)",
+      "Bash(mkdir -p /home/gan/projects/nexus-twin/.claude/skills)",
+      "Bash(rmdir /home/gan/projects/nexus-twin/.claude/commands)"
+    ],
+    "additionalDirectories": [
+      "/home/gan/projects/nexus-twin/.claude"
+    ]
+  }
+}
