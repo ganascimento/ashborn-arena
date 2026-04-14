@@ -1,4 +1,3 @@
-
 from engine.models.character import (
     BASE_ATTRIBUTES,
     BLEED_DAMAGE,

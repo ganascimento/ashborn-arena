@@ -1,4 +1,3 @@
-
 from engine.models.position import Position
 from engine.systems.line_of_sight import get_tiles_in_line, has_line_of_sight
 

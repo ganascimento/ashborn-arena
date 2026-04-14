@@ -30,9 +30,9 @@ Este arquivo mantem o estado atual do desenvolvimento de cada feature do projeto
 
 ### Game Engine (engine/)
 
-| #   | Feature                         | Status   | Dep.  | Spec                                                                                   |
-| --- | ------------------------------- | -------- | ----- | -------------------------------------------------------------------------------------- |
-| 1   | Grid e movimentacao             | concluida  | —     | [features/01_grid_movimentacao/](features/01_grid_movimentacao/)                       |
+| #   | Feature                         | Status    | Dep.  | Spec                                                                                   |
+| --- | ------------------------------- | --------- | ----- | -------------------------------------------------------------------------------------- |
+| 1   | Grid e movimentacao             | concluida | —     | [features/01_grid_movimentacao/](features/01_grid_movimentacao/)                       |
 | 2   | Sistema de turnos e PA          | concluida | 1     | [features/02_sistema_turnos_pa/](features/02_sistema_turnos_pa/)                       |
 | 3   | Atributos, modificadores e HP   | concluida | —     | [features/03_atributos_modificadores_hp/](features/03_atributos_modificadores_hp/)     |
 | 4   | Pipeline de dano                | concluida | 3     | [features/04_pipeline_dano/](features/04_pipeline_dano/)                               |
@@ -48,19 +48,19 @@ Este arquivo mantem o estado atual do desenvolvimento de cada feature do projeto
 
 ### Treinamento (training/)
 
-| #   | Feature                   | Status    | Dep.  | Spec                                                                     |
-| --- | ------------------------- | --------- | ----- | ------------------------------------------------------------------------ |
-| 14  | Ambiente PettingZoo       | concluida | 1-13  | [features/14_ambiente_pettingzoo/](features/14_ambiente_pettingzoo/)     |
-| 15  | MAPPO — redes e algoritmo | concluida | 14    | [features/15_mappo_redes_algoritmo/](features/15_mappo_redes_algoritmo/) |
-| 16  | Training pipeline         | concluida | 15    | [features/16_training_pipeline/](features/16_training_pipeline/)         |
+| #   | Feature                   | Status    | Dep. | Spec                                                                     |
+| --- | ------------------------- | --------- | ---- | ------------------------------------------------------------------------ |
+| 14  | Ambiente PettingZoo       | concluida | 1-13 | [features/14_ambiente_pettingzoo/](features/14_ambiente_pettingzoo/)     |
+| 15  | MAPPO — redes e algoritmo | concluida | 14   | [features/15_mappo_redes_algoritmo/](features/15_mappo_redes_algoritmo/) |
+| 16  | Training pipeline         | concluida | 15   | [features/16_training_pipeline/](features/16_training_pipeline/)         |
 
 ### Backend (backend/)
 
-| #   | Feature       | Status   | Dep.  | Spec                                                     |
-| --- | ------------- | -------- | ----- | -------------------------------------------------------- |
-| 17  | API REST      | pendente | 1-13  | [features/17_api_rest/](features/17_api_rest/)           |
-| 18  | API WebSocket | pendente | 17    | [features/18_api_websocket/](features/18_api_websocket/) |
-| 19  | Inference IA  | pendente | 18    | [features/19_inference_ia/](features/19_inference_ia/)   |
+| #   | Feature       | Status    | Dep. | Spec                                                     |
+| --- | ------------- | --------- | ---- | -------------------------------------------------------- |
+| 17  | API REST      | concluida | 1-13 | [features/17_api_rest/](features/17_api_rest/)           |
+| 18  | API WebSocket | concluida  | 17   | [features/18_api_websocket/](features/18_api_websocket/) |
+| 19  | Inference IA  | concluida  | 18   | [features/19_inference_ia/](features/19_inference_ia/)   |
 
 ### Frontend (frontend/)
 

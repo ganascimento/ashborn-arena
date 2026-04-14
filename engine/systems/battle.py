@@ -146,6 +146,8 @@ class BattleState:
         team_b_config: list[tuple[CharacterClass, tuple[int, ...]]],
         biome: Biome | None = None,
         rng: _random.Random | None = None,
+        team_a_abilities: list[list[str]] | None = None,
+        team_b_abilities: list[list[str]] | None = None,
     ) -> BattleState:
         if rng is None:
             rng = _random.Random()
@@ -178,7 +180,12 @@ class BattleState:
             positions[eid] = pos
             teams[eid] = Team.A
             basic_atks[eid] = BASIC_ATTACKS[cls_type]
-            equipped[eid] = [ABILITIES[aid] for aid in _DEFAULT_ABILITIES[cls_type]]
+            ability_ids = (
+                team_a_abilities[i]
+                if team_a_abilities
+                else _DEFAULT_ABILITIES[cls_type]
+            )
+            equipped[eid] = [ABILITIES[aid] for aid in ability_ids]
             team_a_ids.append(eid)
             grid.place_occupant(pos, Occupant(eid, OccupantType.CHARACTER, Team.A))
 
@@ -192,7 +199,12 @@ class BattleState:
             positions[eid] = pos
             teams[eid] = Team.B
             basic_atks[eid] = BASIC_ATTACKS[cls_type]
-            equipped[eid] = [ABILITIES[aid] for aid in _DEFAULT_ABILITIES[cls_type]]
+            ability_ids = (
+                team_b_abilities[i]
+                if team_b_abilities
+                else _DEFAULT_ABILITIES[cls_type]
+            )
+            equipped[eid] = [ABILITIES[aid] for aid in ability_ids]
             team_b_ids.append(eid)
             grid.place_occupant(pos, Occupant(eid, OccupantType.CHARACTER, Team.B))
 

@@ -1,8 +1,6 @@
 import os
 import tempfile
 
-import numpy as np
-
 from training.agents.buffer import RolloutBuffer
 from training.agents.mappo import MAPPOAgent
 from training.curriculum.phases import CURRICULUM_PHASES, PhaseConfig
