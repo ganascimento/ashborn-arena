@@ -12,6 +12,50 @@ Nenhuma limitacao pendente no game engine. Todas as mecanicas de combate foram i
 
 ## Decisoes de Implementacao
 
+### Frontend — game dimensions 1280x720
+
+Feature 20 alterou o canvas do Phaser de 800x600 para 1280x720 com `Scale.FIT` + `Scale.CENTER_BOTH`. A tela de preparacao precisa de espaco para o painel de classes (esquerda) + painel de build (direita) com 11 habilidades em 2 colunas.
+
+### Frontend — happy-dom para testes
+
+`vitest` usa `happy-dom` como environment (nao jsdom). jsdom tem incompatibilidade ESM com a versao atual do Node. happy-dom fornece localStorage e DOM suficiente para os testes unitarios.
+
+### Frontend — Scene keys (resolvido)
+
+Feature 21 substituiu BattlePlaceholderScene. Feature 24 substituiu ResultPlaceholderScene. Keys finais: `"MenuScene"`, `"PreparationScene"`, `"BattleScene"`, `"ResultScene"`. Todos os placeholders removidos.
+
+### Frontend — processEvents defensivo para field names
+
+`BattleScene.updateStateFromEvent()` e `BattleAnimations.processEventsAnimated()` aceitam field names flexiveis do backend: `entity`/`character` para ator, `to`/`position` para destino, `amount`/`damage`/`heal` para valor. Posicoes como `[x, y]` ou `{ x, y }`. Feature 22 refatorou `processEvents` em dois: `updateStateFromEvent` (estado puro, sem sprites) e `processEventsAnimated` (animacoes via tweens). Feature 23 que adiciona feedback visual deve estender `processEventsAnimated` ou consumir os mesmos callbacks.
+
+### Frontend — WebSocket readyState check
+
+`BattleWsClient.send()` usa `readyState === 1` (nao `WebSocket.OPEN`) porque `WebSocket.OPEN` como static nao esta disponivel em happy-dom. Funciona corretamente — `1` e o valor padrao de `OPEN`.
+
+### Frontend — arquitetura de animacoes e ability bar (feature 22)
+
+`BattleScene` delega animacoes para `BattleAnimations` (battle-animations.ts) e a barra de habilidades para `BattleAbilityBar` (battle-ability-bar.ts). Ambos recebem `Phaser.Scene` no constructor. `processEventsAnimated` e async — os handlers WS (`handleAiAction`, `handleActionResult`, `handleTurnStart`) sao async e usam `isAnimating` flag para bloquear input durante animacoes. O `ready` do protocolo WS so e enviado apos todas as animacoes completarem.
+
+### Frontend — PA e cooldowns rastreados localmente
+
+PA vem de `turn_start.pa` e e decrementado localmente apos cada `action_result` (custo conhecido: 2 para basic_attack, ability.pa_cost para habilidades, ceil(dist/2) para move). Cooldowns rastreados por personagem do jogador em `playerCooldowns: Map<charId, Map<abilityId, turnsRestantes>>`. Tick de cooldowns acontece no `handleTurnStart` de cada personagem. O servidor e a fonte de verdade — se rejeitar uma acao, o jogador ve a mensagem de erro mas o PA local pode ficar dessincronizado ate o proximo turn_start.
+
+### Frontend — dead characters permanecem no Map (resolvido)
+
+Feature 22 nao remove personagens mortos do `characters` Map apos animacao de morte. Feature 23 trata isso corretamente: `updateAllBars` chama `removeHpBar` para entries com `status === "dead"`, e `refreshHud` filtra `status === "dead"` ao atualizar status icons.
+
+### Frontend — HUD modules e overlays (feature 23)
+
+`BattleHud` (battle-hud.ts) gerencia HP bars, status icons e floating text. `BattleRangeOverlay` (battle-range-overlay.ts) gerencia highlights de alcance e preview de AoE. Ambos instanciados no `create()` do BattleScene. HP bars usam depth 100-101, floating text depth 200, range overlay depth 50-51 (abaixo de personagens). `refreshHud()` e chamado apos cada batch de animacoes nos 3 handlers async.
+
+### Frontend — efeitos ativos rastreados localmente
+
+`BattleScene.activeEffects: Map<string, Set<string>>` rastreia tags de efeitos por personagem, atualizados via `effect_applied`/`effect_expired` em `updateStateFromEvent`. Status icons exibem abreviacoes (BLD, PSN, SLW, etc.) com cor por prioridade: controle (roxo) > debuff (laranja) > DOT (vermelho) > elemental (azul). Se o backend nao enviar `effect_expired`, os icons ficam presos — nao ha timeout local.
+
+### Frontend — AoE preview assume raio 1
+
+Preview de AoE mostra 3x3 tiles (raio 1) para todas as habilidades com target "aoe". O engine usa raio 1 para AoE no design.md. Se futuras habilidades usarem raio diferente, precisara de campo `aoe_radius` no AbilityOut.
+
 ### BattleState — acesso a atributos privados pelo backend
 
 O route `POST /battle/start` acessa `battle._characters`, `battle._positions`, `battle._equipped`, `battle._map_objects` diretamente para serializar o estado inicial. O WS handler (feature 18) e o inference (feature 19) usam a API publica do BattleState (get_character, get_position, etc.). Nao foram adicionados properties publicos para os dicts internos — o engine nao conhece o backend.

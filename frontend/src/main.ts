@@ -1,24 +1,17 @@
 import Phaser from "phaser";
-
-class BootScene extends Phaser.Scene {
-  constructor() {
-    super("boot");
-  }
-
-  create() {
-    this.add
-      .text(400, 300, "Ashborn Arena", {
-        fontSize: "32px",
-        color: "#ffffff",
-      })
-      .setOrigin(0.5);
-  }
-}
+import MenuScene from "./scenes/MenuScene";
+import PreparationScene from "./scenes/PreparationScene";
+import BattleScene from "./scenes/BattleScene";
+import ResultScene from "./scenes/ResultScene";
 
 new Phaser.Game({
   type: Phaser.AUTO,
-  width: 800,
-  height: 600,
   backgroundColor: "#1a1a2e",
-  scene: [BootScene],
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: 1280,
+    height: 720,
+  },
+  scene: [MenuScene, PreparationScene, BattleScene, ResultScene],
 });

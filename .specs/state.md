@@ -66,8 +66,8 @@ Este arquivo mantem o estado atual do desenvolvimento de cada feature do projeto
 
 | #   | Feature                     | Status   | Dep. | Spec                                                                         |
 | --- | --------------------------- | -------- | ---- | ---------------------------------------------------------------------------- |
-| 20  | Setup — menu e preparacao   | pendente | 17   | [features/20_setup_menu_preparacao/](features/20_setup_menu_preparacao/)     |
-| 21  | Batalha — grid e rendering  | pendente | 18   | [features/21_batalha_grid_rendering/](features/21_batalha_grid_rendering/)   |
-| 22  | Batalha — acoes e animacoes | pendente | 21   | [features/22_batalha_acoes_animacoes/](features/22_batalha_acoes_animacoes/) |
-| 23  | Batalha — HUD e feedback    | pendente | 21   | [features/23_batalha_hud_feedback/](features/23_batalha_hud_feedback/)       |
-| 24  | Resultado                   | pendente | 18   | [features/24_resultado/](features/24_resultado/)                             |
+| 20  | Setup — menu e preparacao   | concluida | 17   | [features/20_setup_menu_preparacao/](features/20_setup_menu_preparacao/)     |
+| 21  | Batalha — grid e rendering  | concluida | 18   | [features/21_batalha_grid_rendering/](features/21_batalha_grid_rendering/)   |
+| 22  | Batalha — acoes e animacoes | concluida | 21   | [features/22_batalha_acoes_animacoes/](features/22_batalha_acoes_animacoes/) |
+| 23  | Batalha — HUD e feedback    | concluida | 21   | [features/23_batalha_hud_feedback/](features/23_batalha_hud_feedback/)       |
+| 24  | Resultado                   | concluida | 18   | [features/24_resultado/](features/24_resultado/)                             |
