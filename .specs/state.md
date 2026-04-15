@@ -59,15 +59,24 @@ Este arquivo mantem o estado atual do desenvolvimento de cada feature do projeto
 | #   | Feature       | Status    | Dep. | Spec                                                     |
 | --- | ------------- | --------- | ---- | -------------------------------------------------------- |
 | 17  | API REST      | concluida | 1-13 | [features/17_api_rest/](features/17_api_rest/)           |
-| 18  | API WebSocket | concluida  | 17   | [features/18_api_websocket/](features/18_api_websocket/) |
-| 19  | Inference IA  | concluida  | 18   | [features/19_inference_ia/](features/19_inference_ia/)   |
+| 18  | API WebSocket | concluida | 17   | [features/18_api_websocket/](features/18_api_websocket/) |
+| 19  | Inference IA  | concluida | 18   | [features/19_inference_ia/](features/19_inference_ia/)   |
 
 ### Frontend (frontend/)
 
-| #   | Feature                     | Status   | Dep. | Spec                                                                         |
-| --- | --------------------------- | -------- | ---- | ---------------------------------------------------------------------------- |
+| #   | Feature                     | Status    | Dep. | Spec                                                                         |
+| --- | --------------------------- | --------- | ---- | ---------------------------------------------------------------------------- |
 | 20  | Setup — menu e preparacao   | concluida | 17   | [features/20_setup_menu_preparacao/](features/20_setup_menu_preparacao/)     |
 | 21  | Batalha — grid e rendering  | concluida | 18   | [features/21_batalha_grid_rendering/](features/21_batalha_grid_rendering/)   |
 | 22  | Batalha — acoes e animacoes | concluida | 21   | [features/22_batalha_acoes_animacoes/](features/22_batalha_acoes_animacoes/) |
 | 23  | Batalha — HUD e feedback    | concluida | 21   | [features/23_batalha_hud_feedback/](features/23_batalha_hud_feedback/)       |
 | 24  | Resultado                   | concluida | 18   | [features/24_resultado/](features/24_resultado/)                             |
+
+### Melhorias de UX (frontend/)
+
+| #   | Feature                          | Status    | Dep.   | Spec                                                                             |
+| --- | -------------------------------- | --------- | ------ | -------------------------------------------------------------------------------- |
+| 25  | Marcador do personagem ativo     | concluida | 21     | [features/25_marcador_personagem_ativo/](features/25_marcador_personagem_ativo/) |
+| 26  | Correcao custo PA de movimento   | concluida | 22     | [features/26_correcao_movimento_pa/](features/26_correcao_movimento_pa/)         |
+| 27  | Log de combate e ritmo da IA     | concluida | 22, 23 | [features/27_log_combate_ritmo_ia/](features/27_log_combate_ritmo_ia/)           |
+| 28  | Painel de detalhes do personagem | concluida | 23     | [features/28_painel_detalhes_aliado/](features/28_painel_detalhes_aliado/)       |

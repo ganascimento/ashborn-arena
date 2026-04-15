@@ -17,6 +17,11 @@ import { BattleAnimations } from "./battle-animations";
 import { BattleAbilityBar } from "./battle-ability-bar";
 import { BattleHud } from "./battle-hud";
 import { BattleRangeOverlay } from "./battle-range-overlay";
+import { BattleActiveMarker } from "./battle-active-marker";
+import { BattleCombatLog, formatEventForLog } from "./battle-combat-log";
+import { CharacterDetailPanel } from "./battle-detail-panel";
+import type { DetailPanelData } from "./battle-detail-panel";
+import { calculateMovementCost } from "./movement-cost";
 import { updateStateFromEvent } from "./update-state";
 
 const TILE_SIZE = 64;
@@ -40,6 +45,14 @@ const CLASS_ABBR: Record<string, string> = {
   cleric: "C",
   archer: "A",
   assassin: "As",
+};
+
+const CLASS_DISPLAY: Record<string, string> = {
+  warrior: "Guerreiro",
+  mage: "Mago",
+  cleric: "Clerigo",
+  archer: "Arqueiro",
+  assassin: "Assassino",
 };
 
 interface CharacterEntry {
@@ -74,6 +87,10 @@ export default class BattleScene extends Phaser.Scene {
   private selectedAbility: AbilityOut | null = null;
   private hud!: BattleHud;
   private rangeOverlay!: BattleRangeOverlay;
+  private activeMarker!: BattleActiveMarker;
+  private combatLog!: BattleCombatLog;
+  private detailPanel!: CharacterDetailPanel;
+  private detailPanelEntityId: string | null = null;
   private activeEffects: Map<string, Set<string>> = new Map();
   private lastHoverTile: { x: number; y: number } | null = null;
   private destroyed = false;
@@ -96,6 +113,7 @@ export default class BattleScene extends Phaser.Scene {
     this.currentCharacter = "";
     this.isPlayerTurn = false;
     this.lastHoverTile = null;
+    this.detailPanelEntityId = null;
     this.destroyed = false;
   }
 
@@ -136,6 +154,9 @@ export default class BattleScene extends Phaser.Scene {
 
     this.hud = new BattleHud(this);
     this.rangeOverlay = new BattleRangeOverlay(this, TILE_SIZE, GRID_OFFSET_X, GRID_OFFSET_Y, GRID_COLS, GRID_ROWS);
+    this.activeMarker = new BattleActiveMarker(this);
+    this.combatLog = new BattleCombatLog(this, 700, 450, 300, 200);
+    this.detailPanel = new CharacterDetailPanel(this);
 
     for (const [id, entry] of this.characters) {
       const { px, py } = this.gridToPixel(entry.data.position.x, entry.data.position.y);
@@ -152,6 +173,8 @@ export default class BattleScene extends Phaser.Scene {
       this.abilityBar.clearSelection();
       this.selectedAbility = null;
       this.rangeOverlay.clear();
+      this.detailPanel.hide();
+      this.detailPanelEntityId = null;
     });
 
     this.connectWs();
@@ -208,6 +231,9 @@ export default class BattleScene extends Phaser.Scene {
         fontStyle: "bold",
       }).setOrigin(0.5);
       const container = this.add.container(px, py, [circle, label]);
+      container.setSize(48, 48);
+      container.setInteractive(new Phaser.Geom.Circle(0, 0, 24), Phaser.Geom.Circle.Contains);
+      container.on("pointerdown", () => this.onCharacterClick(char.entity_id));
       this.characters.set(char.entity_id, {
         data: { ...char },
         sprite: container,
@@ -273,17 +299,29 @@ export default class BattleScene extends Phaser.Scene {
     this.currentCharacter = entityId;
     this.isPlayerTurn = this.isPlayerCharacter(entityId);
 
+    const charEntry = this.characters.get(entityId);
+    const displayName = charEntry
+      ? (CLASS_DISPLAY[charEntry.data.class_id] ?? entityId)
+      : entityId;
+
     const color = this.isPlayerTurn ? "#4488ff" : "#ff4444";
-    this.turnIndicator.setText(`Turno de: ${entityId}`).setColor(color);
+    this.turnIndicator.setText(`Turno de: ${displayName}`).setColor(color);
     this.turnSubtext
       .setText(this.isPlayerTurn ? "Seu turno" : "Turno da IA")
       .setColor(color);
     this.errorText.setText("");
+
+    if (charEntry) {
+      const { px, py } = this.gridToPixel(charEntry.data.position.x, charEntry.data.position.y);
+      this.activeMarker.show(px, py, charEntry.data.team);
+    }
   }
 
   // --- WS Handlers ---
 
   private async handleTurnStart(msg: WsTurnStart) {
+    this.detailPanel.hide();
+    this.detailPanelEntityId = null;
     this.updateTurnState(msg.character);
 
     if (this.isPlayerCharacter(msg.character)) {
@@ -315,12 +353,15 @@ export default class BattleScene extends Phaser.Scene {
       } finally {
         this.isAnimating = false;
       }
+      this.logEvents(msg.events);
       this.refreshHud();
       this.drainQueue();
     }
   }
 
   private async handleActionResult(msg: WsActionResult) {
+    this.detailPanel.hide();
+    this.detailPanelEntityId = null;
     this.isAnimating = true;
     try {
       await this.animations.processEventsAnimated(
@@ -334,6 +375,7 @@ export default class BattleScene extends Phaser.Scene {
     } finally {
       this.isAnimating = false;
     }
+    this.logEvents(msg.events);
     this.refreshHud();
     this.updatePAFromAction(msg);
     this.abilityBar.clearSelection();
@@ -343,6 +385,8 @@ export default class BattleScene extends Phaser.Scene {
   }
 
   private async handleAiAction(msg: WsAiAction) {
+    this.detailPanel.hide();
+    this.detailPanelEntityId = null;
     this.isAnimating = true;
     try {
       await this.animations.processEventsAnimated(
@@ -356,7 +400,9 @@ export default class BattleScene extends Phaser.Scene {
     } finally {
       this.isAnimating = false;
     }
+    this.logEvents(msg.events);
     this.refreshHud();
+    await this.delay(800);
     this.wsClient.sendReady();
     this.drainQueue();
   }
@@ -374,6 +420,9 @@ export default class BattleScene extends Phaser.Scene {
 
   private handleBattleEnd(msg: WsBattleEnd) {
     this.wsClient.disconnect();
+    this.activeMarker.hide();
+    this.combatLog.destroy();
+    this.detailPanel.hide();
     const characters: { class_id: string; team: string; status: string }[] = [];
     for (const [, entry] of this.characters) {
       characters.push({
@@ -393,9 +442,50 @@ export default class BattleScene extends Phaser.Scene {
     this.errorText.setText("Conexao perdida");
   }
 
+  // --- Character Detail Panel ---
+
+  private onCharacterClick(entityId: string) {
+    if (this.isAnimating) return;
+
+    if (this.detailPanel.isVisible() && this.detailPanelEntityId === entityId) {
+      this.detailPanel.hide();
+      this.detailPanelEntityId = null;
+      return;
+    }
+
+    const entry = this.characters.get(entityId);
+    if (!entry || entry.status === "dead") return;
+
+    const isAlly = entry.data.team === "player";
+    const effects = this.activeEffects.get(entityId) ?? new Set<string>();
+
+    const data: DetailPanelData = {
+      className: CLASS_DISPLAY[entry.data.class_id] ?? entry.data.class_id,
+      team: entry.data.team,
+      currentHp: entry.data.current_hp,
+      maxHp: entry.data.max_hp,
+      pa: entityId === this.currentCharacter ? this.currentPA : undefined,
+      attributes: isAlly ? entry.data.attributes : undefined,
+      effects: [...effects].map((tag) => ({ tag })),
+      abilities: isAlly
+        ? entry.data.abilities.map((ab) => ({
+            name: ab.name,
+            cooldownRemaining: this.playerCooldowns.get(entityId)?.get(ab.id) ?? 0,
+          }))
+        : undefined,
+    };
+
+    this.detailPanel.show(data);
+    this.detailPanelEntityId = entityId;
+  }
+
   // --- Tile Interaction ---
 
   private onTileClick(x: number, y: number) {
+    if (this.detailPanel.isVisible()) {
+      this.detailPanel.hide();
+      this.detailPanelEntityId = null;
+    }
     if (this.isAnimating || !this.isPlayerTurn) return;
 
     if (this.selectedAbility) {
@@ -462,19 +552,7 @@ export default class BattleScene extends Phaser.Scene {
   private updatePAFromAction(msg: WsActionResult) {
     let cost = 0;
     if (msg.action === "move") {
-      for (const raw of msg.events) {
-        const event = raw as Record<string, unknown>;
-        if (event.type === "move" || event.type === "ability_movement") {
-          const from = event.from as [number, number] | { x: number; y: number } | undefined;
-          const to = (event.to ?? event.position) as [number, number] | { x: number; y: number } | undefined;
-          if (from && to) {
-            const [fx, fy] = Array.isArray(from) ? from : [from.x, from.y];
-            const [tx, ty] = Array.isArray(to) ? to : [to.x, to.y];
-            const dist = Math.max(Math.abs(tx - fx), Math.abs(ty - fy));
-            cost += Math.ceil(dist / 2);
-          }
-        }
-      }
+      cost = calculateMovementCost(msg.events);
     } else if (msg.action === "basic_attack") {
       cost = 2;
     } else if (msg.action === "ability") {
@@ -547,6 +625,29 @@ export default class BattleScene extends Phaser.Scene {
     }
   }
 
+  // --- Log + Delay Helpers ---
+
+  private resolveClassName = (entityId: string): string => {
+    const entry = this.characters.get(entityId);
+    return entry ? (CLASS_DISPLAY[entry.data.class_id] ?? entityId) : entityId;
+  };
+
+  private logEvents(events: unknown[]) {
+    for (const raw of events) {
+      const event = raw as Record<string, unknown>;
+      const text = formatEventForLog(event, this.resolveClassName);
+      if (text) {
+        this.combatLog.addEntry(text);
+      }
+    }
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => {
+      this.time.delayedCall(ms, resolve);
+    });
+  }
+
   // --- Helpers ---
 
   private gridToPixel(x: number, y: number): { px: number; py: number } {
@@ -581,5 +682,8 @@ export default class BattleScene extends Phaser.Scene {
     this.abilityBar?.destroy();
     this.hud?.destroy();
     this.rangeOverlay?.destroy();
+    this.activeMarker?.destroy();
+    this.combatLog?.destroy();
+    this.detailPanel?.destroy();
   }
 }

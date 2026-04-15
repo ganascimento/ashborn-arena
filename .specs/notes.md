@@ -52,6 +52,8 @@ Feature 22 nao remove personagens mortos do `characters` Map apos animacao de mo
 
 `BattleScene.activeEffects: Map<string, Set<string>>` rastreia tags de efeitos por personagem, atualizados via `effect_applied`/`effect_expired` em `updateStateFromEvent`. Status icons exibem abreviacoes (BLD, PSN, SLW, etc.) com cor por prioridade: controle (roxo) > debuff (laranja) > DOT (vermelho) > elemental (azul). Se o backend nao enviar `effect_expired`, os icons ficam presos — nao ha timeout local.
 
+**Feature 28 limitacao:** o `CharacterDetailPanel` exibe efeitos ativos sem duracao restante porque `activeEffects` armazena apenas tags (`Set<string>`), nao `{ tag, duration }`. Para exibir duracao, seria necessario que o backend envie `duration` no evento `effect_applied` e que o frontend rastreie em `Map<string, Map<string, { tag: string, duration: number }>>`. Nao implementado no MVP.
+
 ### Frontend — AoE preview assume raio 1
 
 Preview de AoE mostra 3x3 tiles (raio 1) para todas as habilidades com target "aoe". O engine usa raio 1 para AoE no design.md. Se futuras habilidades usarem raio diferente, precisara de campo `aoe_radius` no AbilityOut.

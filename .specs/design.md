@@ -875,4 +875,117 @@ Isso garante que o jogador ve cada acao individualmente com animacao completa.
 
 ### 7. Interface e Experiencia
 
-> Detalhamento visual (sprites, animacoes, UI components) a definir durante implementacao. Estrutura de telas e feedback definidos no PRD secao 7.
+Estrutura de telas e feedback geral definidos no PRD secao 7. Abaixo, specs tecnicas dos componentes de UI implementados apos playtesting.
+
+#### 7.1 Marcador do Personagem Ativo
+
+**Componente visual:** anel pulsante + seta indicadora
+
+- Anel: `Phaser.GameObjects.Arc` com stroke, animado via tween de escala (1.0 → 1.15, yo-yo, loop infinito, duracao 600ms)
+- Seta: triangulo acima do sprite, offset Y = -40px do centro do container, mesma animacao de flutuacao (y +-4px, yo-yo, duracao 800ms)
+- Cor: `0x4488ff` (jogador) ou `0xff4444` (IA)
+- Transicao: ao mudar turno, destruir marcador atual e criar no novo personagem (sem animacao de transicao — instantaneo)
+- Texto do turn indicator: traduzir entity_id para nome da classe via lookup `CLASS_DISPLAY` (ja existente nos scenes)
+
+#### 7.2 Correcao do Custo de PA por Movimento
+
+A regra de **2 tiles por 1 PA** (prd.md secao 6.2) deve funcionar da seguinte forma:
+
+- O jogador clica em um tile destino. O **backend** calcula o caminho e o custo total
+- O `action_result` do servidor **ja retorna o custo correto** nos eventos — o problema e que o frontend calcula PA localmente de forma errada
+- **Frontend fix**: no `updatePAFromAction`, o calculo de custo de movimento deve usar `Math.ceil(distancia_total / 2)` sobre a distancia total do caminho, nao sobre cada segmento individual
+- O frontend deve enviar um unico comando `move` com o tile destino final; o backend resolve o pathfinding e retorna o custo
+- **Validacao**: o backend ja aplica a regra correta (1 PA = 2 tiles). O frontend so precisa refletir o PA retornado pelo servidor
+
+**Sugestao de implementacao**: usar `pa_remaining` do `turn_start` como source of truth e, em `action_result`, deduzir o custo baseado nos eventos retornados pelo servidor, recalculando a distancia total do path (nao por segmento)
+
+#### 7.3 Log de Combate
+
+**Componente:** `BattleCombatLog` — painel na lateral direita ou inferior da tela de batalha
+
+**Layout:**
+- Posicao: lateral direita, abaixo da ability bar (x: 700, y apos ability bar)
+- Tamanho: ~300px largura, ~200px altura
+- Background: retangulo semi-transparente (`0x1a1a2e`, alpha 0.85)
+- Texto: monospace 12px, cor `#cccccc`
+- Scroll: manter array de strings, renderizar as ultimas N que cabem na area visivel
+- Maximo: 50 entradas (FIFO)
+
+**Formato das entradas:**
+```
+[Turno {n}] {Classe} usou {Habilidade} em {Alvo} — {resultado}
+```
+
+Exemplos:
+```
+[Turno 3] Mago usou Nova Flamejante em Guerreiro — 18 dano [Fogo]
+[Turno 3] Guerreiro moveu para (5,3)
+[Turno 4] Clerigo usou Luz Restauradora em Mago — +12 cura
+[Turno 4] Assassino sofreu 3 dano (sangramento)
+```
+
+**Mapeamento de eventos para log:**
+- `move` / `ability_movement` → "{Classe} moveu para ({x},{y})"
+- `basic_attack` → "{Classe} atacou {Alvo} — {dano} dano"
+- `ability` → "{Classe} usou {nome_habilidade} em {Alvo} — {dano} dano" ou "{cura} cura"
+- `aoe_hit` → "{Alvo} recebeu {dano} dano [AoE]"
+- `bleed` / `dot_tick` → "{Classe} sofreu {dano} dano ({tipo_efeito})"
+- `heal` / `hot_tick` → "{Classe} recuperou {cura} HP"
+- `knocked_out` → "{Classe} foi nocauteado!"
+- `death` → "{Classe} morreu!"
+- `effect_applied` → "{Classe} recebeu efeito: {tag}"
+- `effect_expired` → "Efeito {tag} expirou em {Classe}"
+
+**Ritmo da IA:**
+- Apos cada `ai_action` ser animada, aplicar `await delay(800)` antes de enviar `ready`
+- Isso garante que o jogador tem tempo de ler o log e observar a animacao
+
+#### 7.4 Painel de Detalhes do Personagem
+
+**Componente:** `CharacterDetailPanel` — overlay ativado por clique
+
+**Ativacao:**
+- Clique em sprite de **aliado**: painel completo
+- Clique em sprite de **inimigo**: painel reduzido
+- Fechar: clique fora do painel, tecla ESC, ou clique em outro personagem
+
+**Layout aliado (painel completo):**
+```
+┌─────────────────────────────┐
+│  Guerreiro         HP: 45/85│
+│  PA: 2/4                    │
+│─────────────────────────────│
+│  FOR: 13 (+8)   DES: 6 (+1)│
+│  CON: 10 (+5)   INT: 2 (-3)│
+│  SAB: 4 (-1)               │
+│─────────────────────────────│
+│  Efeitos:                   │
+│    Sangramento (2 turnos)   │
+│    Lentidao (1 turno)       │
+│─────────────────────────────│
+│  Habilidades:               │
+│    Impacto Brutal    OK     │
+│    Investida         CD: 2  │
+│    Corte Profundo    OK     │
+│    Muralha de Ferro  CD: 1  │
+│    Grito de Guerra   OK     │
+└─────────────────────────────┘
+```
+
+**Layout inimigo (painel reduzido):**
+```
+┌─────────────────────────────┐
+│  Mago              HP: 22/55│
+│─────────────────────────────│
+│  Efeitos:                   │
+│    Molhado (3 turnos)       │
+└─────────────────────────────┘
+```
+
+**Implementacao:**
+- Container Phaser com depth alto (300+) para ficar acima de tudo
+- Posicao: centralizado na tela ou ao lado do personagem clicado
+- Background: retangulo solido `0x1a1a2e` com borda `0x4488ff` (aliado) ou `0xff4444` (inimigo)
+- Dados de cooldown: ler do `playerCooldowns` map existente no BattleScene
+- Dados de efeitos: ler do `activeEffects` map existente no BattleScene
+- Dados de atributos: ler do `CharacterOut.attributes` ja armazenado

@@ -566,6 +566,38 @@ Toda informacao do jogador e armazenada no **localStorage** do browser:
 - Icones de **status** ativos (molhado, sangramento, etc.)
 - Indicador de **objetos em chamas**
 
+### 7.6 Marcador do Personagem Ativo
+
+O personagem cujo turno esta ativo deve ser **claramente distinguivel** de todos os outros no grid:
+- **Borda pulsante** ao redor do sprite do personagem ativo (cor do time: azul jogador, vermelho IA)
+- **Seta indicadora** acima do personagem ativo, visivel mesmo com HUD densa
+- Ao iniciar turno de novo personagem, o marcador **transiciona suavemente** do anterior para o proximo
+- O indicador de texto no topo da tela ("Turno de: X") deve exibir o **nome da classe** em portugues, nao o entity_id interno
+
+### 7.7 Log de Combate
+
+Painel lateral ou inferior que registra as acoes da batalha em tempo real:
+- Cada entrada mostra: **quem** fez a acao, **qual** acao/habilidade, **em quem**, e o **resultado** (dano causado, cura aplicada, efeito aplicado, etc.)
+- Formato resumido, uma linha por evento (ex: "Mago usou Nova Flamejante em Guerreiro — 18 dano [Fogo]")
+- **Scroll automatico** para a ultima entrada, com possibilidade de rolar para cima
+- Maximo de **50 entradas** visiveis (FIFO — entradas antigas saem)
+- O log persiste durante toda a batalha (nao limpa entre turnos)
+
+**Ritmo das acoes da IA:**
+- Entre cada acao da IA, aguardar um **delay minimo de 800ms** (alem do tempo de animacao) para dar tempo do jogador acompanhar
+- Esse delay e aplicado **apos** a animacao completar, antes de enviar o `ready` para o servidor
+
+### 7.8 Painel de Detalhes do Aliado
+
+Ao **clicar em um personagem aliado** no grid, exibir um painel de detalhes:
+- **HP atual / HP maximo** (numerico)
+- **PA restante** no turno (se for o personagem ativo)
+- Lista de **efeitos ativos** com nome e duracao restante em turnos
+- Lista de **habilidades** com estado de cooldown (disponivel ou "CD: X turnos")
+- **Atributos finais** (base + pontos alocados)
+- O painel fecha ao clicar em outro lugar ou pressionar ESC
+- Clicar em um **personagem inimigo** mostra apenas HP atual/maximo e efeitos ativos (informacao limitada)
+
 ---
 
 ## 8. Definicoes Fechadas

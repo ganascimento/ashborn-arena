@@ -1,140 +1,202 @@
 <div align="center">
 
-# Ashborn Arena
+# ⚔️ Ashborn Arena
 
-Turn-based tactical RPG with multi-agent AI trained via reinforcement learning.
+**Turn-based tactical RPG with multi-agent AI trained via reinforcement learning.**
 
-![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)
-![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=flat&logo=pytorch&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat&logo=fastapi&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
-![Phaser](https://img.shields.io/badge/Phaser_3-8B5CF6?style=flat&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJMMiAyMmgyMEwxMiAyeiIgZmlsbD0id2hpdGUiLz48L3N2Zz4=&logoColor=white)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://typescriptlang.org)
+[![Phaser](https://img.shields.io/badge/Phaser_3-8B5CF6?style=for-the-badge&logoColor=white)](https://phaser.io)
+[![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev)
 
 </div>
 
----
+<br/>
 
-## Features
+## 🎮 Features
 
-- **5 unique classes** — Warrior, Mage, Cleric, Archer, Assassin with 47 abilities and elemental combos
-- **Deep build system** — 5 attributes, 10 distributable points, 11 abilities per class (pick 5)
-- **Destructible environments** — throwable objects, fire spread, line-of-sight cover on a 10x8 grid
-- **Multi-agent RL** — MAPPO-trained AI with per-class policies and curriculum learning (1v1 to 3v3)
-- **3 difficulty levels** — Easy, Normal, Hard from different training checkpoints
-- **Zero friction** — browser-based, no login, builds saved in localStorage
+| | Feature | Description |
+|---|---|---|
+| 🗡️ | **5 unique classes** | Warrior, Mage, Cleric, Archer, Assassin with 47 abilities and elemental combos |
+| 📊 | **Deep build system** | 5 attributes, 10 distributable points, 11 abilities per class (pick 5) |
+| 💥 | **Destructible environments** | Throwable objects, fire spread, line-of-sight cover on a 10x8 grid |
+| 🤖 | **Multi-agent RL** | MAPPO-trained AI with per-class policies and curriculum learning (1v1 to 3v3) |
+| 🎯 | **3 difficulty levels** | Easy, Normal, Hard from different training checkpoints |
+| 🌐 | **Zero friction** | Browser-based, no login, builds saved in localStorage |
 
-## Tech Stack
+<br/>
 
-| Layer          | Technology                             |
-| -------------- | -------------------------------------- |
-| Game Engine    | Python (pure, no framework)            |
-| ML / AI        | PyTorch, MAPPO (custom implementation) |
-| RL Environment | PettingZoo                             |
-| Backend API    | FastAPI (REST + WebSocket)             |
-| Frontend       | Phaser 3 + TypeScript                  |
-| Persistence    | localStorage (no database)             |
+## 🛠️ Tech Stack
 
-## Getting Started
+| Layer | Technology |
+|---|---|
+| 🎲 Game Engine | Python (pure, no framework) |
+| 🧠 ML / AI | PyTorch, MAPPO (custom implementation) |
+| 🏋️ RL Environment | PettingZoo |
+| ⚡ Backend API | FastAPI (REST + WebSocket) |
+| 🖥️ Frontend | Phaser 3 + TypeScript + Vite |
+| 💾 Persistence | localStorage (no database) |
+
+<br/>
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Python 3.11+
-- Node.js 18+
+| Requirement | Version |
+|---|---|
+| 🐍 Python | 3.11+ |
+| 📦 Node.js | 18+ |
 
 ### Installation
 
 ```bash
-# Clone the repository
 git clone <repo-url>
 cd ashborn-arena
 
-# Create and activate virtual environment
+# Python — create venv and install all packages
 python -m venv .venv
 source .venv/bin/activate  # Linux/macOS
 # .venv\Scripts\activate   # Windows
-
-# Install Python dependencies (engine + backend + training)
 pip install -e ".[dev]"
 
-# Install frontend dependencies
-cd frontend
-npm install
-cd ..
+# Frontend
+cd frontend && npm install && cd ..
 ```
 
-### Running
+### ▶️ Running the App
+
+You need two terminals — one for the backend, one for the frontend.
+
+**⚡ Backend** (REST + WebSocket on port 8000):
 
 ```bash
-# Start the backend
+source .venv/bin/activate
 uvicorn backend.main:app --reload
+```
 
-# Start the frontend (in another terminal)
+**🖥️ Frontend** (Vite dev server, default port 5173):
+
+```bash
 cd frontend
 npm run dev
 ```
 
-### Training the AI
+Open `http://localhost:5173` in the browser. The frontend connects to the backend at `localhost:8000`.
+
+### 🧠 Training the AI
 
 ```bash
-# Run the full curriculum (this takes weeks on CPU)
+# Full curriculum (1v1 → 2v2 → 3v3, takes a long time on CPU)
 python -m training.train
 
-# Or run a specific phase
+# Single phase
 python -m training.train --phase 1  # 1v1 only
 ```
 
-## Testing
+Trained checkpoints are saved to `models/{easy,normal,hard}/` and loaded by the backend at inference time.
+
+<br/>
+
+## 🧪 Testing
+
+### 🐍 Backend + Engine
+
+Uses **pytest**. Test paths: `engine/tests/`, `backend/tests/`, `training/tests/`.
 
 ```bash
-# Engine + backend tests
+# Run all Python tests
 pytest
 
-# Frontend tests
-cd frontend
-npm test
+# Run with verbose output
+pytest -v
+
+# Run a specific module
+pytest engine/tests/test_combat.py
 ```
 
-## Project Structure
+### 🖥️ Frontend
+
+Uses **Vitest** with happy-dom. Tests live in `__tests__/` folders next to the source.
+
+```bash
+cd frontend
+
+# Run all tests once
+npx vitest run
+
+# Run in watch mode (re-runs on file changes)
+npm test
+
+# Run a specific test file
+npx vitest run src/network/__tests__/ws-client.test.ts
+```
+
+### ✅ Build Check
+
+```bash
+# TypeScript type-check (no emit)
+cd frontend && npx tsc --noEmit
+```
+
+<br/>
+
+## 📁 Project Structure
 
 ```
 ashborn-arena/
-├── engine/                 # Game engine (shared between backend and training)
-│   ├── models/             # Domain models: Character, Ability, Map, Effect
-│   ├── systems/            # Combat, movement, LoS, damage pipeline
-│   └── generation/         # Procedural map generation
-├── backend/                # FastAPI (REST + WebSocket)
-│   ├── api/routes/         # Endpoints
-│   ├── api/schemas/        # Pydantic request/response
-│   └── inference/          # Loads .pt models, runs MAPPO inference
-├── training/               # RL training (standalone)
-│   ├── environment/        # PettingZoo wrapper
-│   ├── agents/             # MAPPO networks + PPO update
-│   └── curriculum/         # Training phases + self-play
-├── frontend/               # Phaser 3 + TypeScript
+├── engine/                 # 🎲 Game engine (shared between backend and training)
+│   ├── models/             #    Domain models: Character, Ability, Map, Effect
+│   ├── systems/            #    Combat, movement, LoS, damage pipeline
+│   └── generation/         #    Procedural map generation
+├── backend/                # ⚡ FastAPI (REST + WebSocket)
+│   ├── api/routes/         #    Endpoints
+│   ├── api/schemas/        #    Pydantic request/response
+│   └── inference/          #    Loads .pt models, runs MAPPO inference
+├── training/               # 🧠 RL training (standalone)
+│   ├── environment/        #    PettingZoo wrapper
+│   ├── agents/             #    MAPPO networks + PPO update
+│   └── curriculum/         #    Training phases + self-play
+├── frontend/               # 🖥️ Phaser 3 + TypeScript
 │   └── src/
-│       ├── scenes/         # Menu, preparation, battle, result
-│       ├── ui/             # HUD, ability bar, HP bars
-│       └── network/        # REST + WebSocket client
-├── models/                 # Trained AI checkpoints (.pt)
+│       ├── scenes/         #    Menu, Preparation, Battle, Result
+│       └── network/        #    REST client, WebSocket client, validation
+├── models/                 # 📦 Trained AI checkpoints (.pt)
 │   ├── easy/
 │   ├── normal/
 │   └── hard/
-└── .specs/                 # Game design documentation
-    ├── prd.md              # Product requirements
-    ├── design.md           # Technical design (formulas, ability specs)
-    └── features/           # Per-feature specs and tasks
+└── .specs/                 # 📝 Game design documentation
+    ├── prd.md              #    Product requirements
+    ├── design.md           #    Technical design (formulas, ability specs)
+    ├── state.md            #    Development status for all 24 features
+    └── features/           #    Per-feature specs and tasks
 ```
 
-## Documentation
+### 🔗 Package Dependencies
+
+```
+engine         ← pure domain, no external deps
+backend        ← imports engine + models/
+training       ← imports engine, produces models/
+frontend       ← independent (communicates via REST/WS)
+```
+
+<br/>
+
+## 📖 Documentation
 
 All game rules, formulas, and design decisions live in `.specs/`:
 
-| Document                      | Contents                                                                        |
-| ----------------------------- | ------------------------------------------------------------------------------- |
-| [prd.md](.specs/prd.md)       | Game rules, classes, abilities, map, AI, interface                              |
-| [design.md](.specs/design.md) | Damage formulas, numerical specs for 47 abilities, AI architecture, WS protocol |
-| [state.md](.specs/state.md)   | Development status for all 24 features                                          |
+| Document | Contents |
+|---|---|
+| 📋 [prd.md](.specs/prd.md) | Game rules, classes, abilities, map, AI, interface |
+| 🔧 [design.md](.specs/design.md) | Damage formulas, numerical specs for 47 abilities, AI architecture, WS protocol |
+| 📊 [state.md](.specs/state.md) | Development status for all 24 features |
 
-## License
+<br/>
+
+## 📄 License
 
 MIT
