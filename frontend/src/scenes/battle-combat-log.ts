@@ -51,7 +51,7 @@ export function formatEventForLog(
 ): string | null {
   const type = event.type as string;
 
-  const entity = (event.entity ?? event.character) as string | undefined;
+  const entity = (event.entity ?? event.character ?? event.attacker ?? event.healer) as string | undefined;
   const target = event.target as string | undefined;
   const cls = entity ? resolveClass(entity) : "???";
   const tgt = target ? resolveClass(target) : undefined;

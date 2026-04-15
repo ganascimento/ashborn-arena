@@ -4,6 +4,12 @@ from engine.models.ability import ABILITIES, Ability
 from engine.models.character import CharacterClass
 
 
+class EffectOut(BaseModel):
+    tag: str
+    duration: int
+    target: str
+
+
 class AbilityOut(BaseModel):
     id: str
     name: str
@@ -15,6 +21,8 @@ class AbilityOut(BaseModel):
     damage_type: str
     heal_base: int
     elemental_tag: str
+    effects: list[EffectOut]
+    movement_type: str
 
 
 class ClassInfo(BaseModel):
@@ -47,6 +55,11 @@ def ability_to_out(ability: Ability) -> AbilityOut:
         damage_type=ability.damage_type,
         heal_base=ability.heal_base,
         elemental_tag=ability.elemental_tag,
+        effects=[
+            EffectOut(tag=e.tag, duration=e.duration, target=e.target)
+            for e in ability.effects
+        ],
+        movement_type=ability.movement_type,
     )
 
 

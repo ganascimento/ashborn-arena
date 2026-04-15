@@ -1,4 +1,4 @@
-export function calculateMovementCost(events: unknown[]): number {
+export function calculateMovementDistance(events: unknown[]): number {
   let totalDist = 0;
   for (const raw of events) {
     const event = raw as Record<string, unknown>;
@@ -12,5 +12,9 @@ export function calculateMovementCost(events: unknown[]): number {
       }
     }
   }
-  return Math.ceil(totalDist / 2);
+  return totalDist;
+}
+
+export function calculateMovementCost(events: unknown[]): number {
+  return Math.ceil(calculateMovementDistance(events) / 2);
 }

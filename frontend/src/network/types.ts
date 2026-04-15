@@ -1,3 +1,9 @@
+export interface EffectOut {
+  tag: string;
+  duration: number;
+  target: string;
+}
+
 export interface AbilityOut {
   id: string;
   name: string;
@@ -9,6 +15,8 @@ export interface AbilityOut {
   damage_type: string;
   heal_base: number;
   elemental_tag: string;
+  effects: EffectOut[];
+  movement_type: string;
 }
 
 export interface ClassInfo {
@@ -98,6 +106,7 @@ export interface WsActionResult {
   character: string;
   action: string;
   ability?: string;
+  pa: number;
   events: unknown[];
 }
 

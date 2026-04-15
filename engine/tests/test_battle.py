@@ -259,9 +259,9 @@ class TestVictory:
         result = bs.check_victory()
         assert result == "team_a"
 
-    def test_knocked_out_not_dead(self):
+    def test_knocked_out_counts_as_defeated(self):
         bs = _make_1v1()
         for eid in bs.team_b_entities:
             char = bs.get_character(eid)
             char.apply_damage(char.max_hp)
-        assert bs.check_victory() is None
+        assert bs.check_victory() == "team_a"

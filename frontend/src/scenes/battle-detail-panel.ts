@@ -47,9 +47,9 @@ export class CharacterDetailPanel {
     let lines = 1; // header
     if (data.pa !== undefined) lines++;
     if (isAlly && data.attributes) lines += 3; // separator + 2 rows of attrs
-    lines += 1 + Math.max(data.effects.length, 1); // separator + effects header + entries
+    lines += 2 + Math.max(data.effects.length, 1); // separator + "Efeitos:" + entries
     if (isAlly && data.abilities) {
-      lines += 1 + data.abilities.length; // separator + abilities header + entries
+      lines += 2 + data.abilities.length; // separator + "Habilidades:" + entries
     }
 
     const panelHeight = lines * LINE_H + PAD * 2;
@@ -61,7 +61,6 @@ export class CharacterDetailPanel {
     const bg = this.scene.add.rectangle(cx, cy, PANEL_WIDTH, panelHeight, BG_COLOR);
     bg.setStrokeStyle(2, borderColor);
     bg.setDepth(PANEL_DEPTH);
-    bg.setInteractive();
     this.objects.push(bg);
 
     let y = top + PAD;

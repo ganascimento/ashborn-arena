@@ -30,6 +30,7 @@ from engine.systems.damage import (
 from engine.systems.effect_manager import EffectManager
 from engine.systems.elemental import check_elemental_combo, has_negative_status
 from engine.systems.initiative import determine_turn_order
+from engine.systems.line_of_sight import has_line_of_sight
 from engine.systems.movement import execute_move, get_reachable_tiles, tiles_for_pa
 from engine.systems.opportunity import get_opportunity_attackers
 from engine.systems.turn_manager import TurnManager
@@ -417,19 +418,19 @@ class BattleState:
         return self._events
 
     def check_victory(self) -> str | None:
-        a_alive = any(
-            self._characters[eid].state != CharacterState.DEAD
+        a_active = any(
+            self._characters[eid].state == CharacterState.ACTIVE
             for eid in self._team_a
             if eid in self._characters
         )
-        b_alive = any(
-            self._characters[eid].state != CharacterState.DEAD
+        b_active = any(
+            self._characters[eid].state == CharacterState.ACTIVE
             for eid in self._team_b
             if eid in self._characters
         )
-        if not b_alive:
+        if not b_active:
             return "team_a"
-        if not a_alive:
+        if not a_active:
             return "team_b"
         return None
 
@@ -527,6 +528,15 @@ class BattleState:
 
         target_id = self._find_character_at(target_pos)
         if target_id is None:
+            return
+
+        agent_pos = self._positions[agent]
+        dist = max(abs(target_pos.x - agent_pos.x), abs(target_pos.y - agent_pos.y))
+        if dist > ability.max_range:
+            return
+        if ability.max_range > 1 and not has_line_of_sight(
+            agent_pos, target_pos, self.get_blocking_positions()
+        ):
             return
 
         self._turn_manager.spend_pa(agent, ability.pa_cost)
@@ -651,13 +661,27 @@ class BattleState:
                 self._apply_buff_effect(agent, target_pos, ability, buff_def)
 
         if ability.movement_type and ability.movement_distance > 0:
-            self._events.append(
-                {
-                    "type": "ability_movement",
-                    "entity": agent,
-                    "movement": ability.movement_type,
-                }
+            new_pos = self._resolve_ability_movement(
+                agent, target_pos, ability.movement_type, ability.movement_distance
             )
+            if new_pos and new_pos != self._positions[agent]:
+                old_pos = self._positions[agent]
+                team = self._teams[agent]
+                self.grid.remove_occupant(old_pos, agent)
+                self.grid.place_occupant(
+                    new_pos,
+                    Occupant(agent, OccupantType.CHARACTER, team),
+                )
+                self._positions[agent] = new_pos
+                self._events.append(
+                    {
+                        "type": "ability_movement",
+                        "entity": agent,
+                        "from": old_pos,
+                        "to": new_pos,
+                        "movement": ability.movement_type,
+                    }
+                )
 
         if ability.remove_all_negative:
             target_id = self._find_character_at(target_pos)
@@ -666,6 +690,65 @@ class BattleState:
                 self._events.append(
                     {"type": "purge", "target": target_id, "removed": len(removed)}
                 )
+
+    def _resolve_ability_movement(
+        self, agent: str, target_pos: Position, movement_type: str, max_dist: int
+    ) -> Position | None:
+        agent_pos = self._positions[agent]
+
+        if movement_type == "charge":
+            return self._find_adjacent_free(agent_pos, target_pos, max_dist)
+        elif movement_type == "retreat":
+            dx = agent_pos.x - target_pos.x
+            dy = agent_pos.y - target_pos.y
+            for dist in range(max_dist, 0, -1):
+                nx = agent_pos.x + (1 if dx > 0 else -1 if dx < 0 else 0) * dist
+                ny = agent_pos.y + (1 if dy > 0 else -1 if dy < 0 else 0) * dist
+                candidate = Position(nx, ny)
+                if self._is_free_tile(candidate):
+                    return candidate
+            return None
+        elif movement_type == "teleport":
+            if self._is_free_tile(target_pos):
+                return target_pos
+            return self._find_adjacent_free(agent_pos, target_pos, 1)
+        return None
+
+    def _find_adjacent_free(
+        self, from_pos: Position, near_pos: Position, max_dist: int
+    ) -> Position | None:
+        best: Position | None = None
+        best_dist = float("inf")
+        for dx in range(-1, 2):
+            for dy in range(-1, 2):
+                if dx == 0 and dy == 0:
+                    continue
+                candidate = Position(near_pos.x + dx, near_pos.y + dy)
+                if not self._is_free_tile(candidate):
+                    continue
+                dist_from_source = max(
+                    abs(candidate.x - from_pos.x), abs(candidate.y - from_pos.y)
+                )
+                if dist_from_source > max_dist:
+                    continue
+                dist_to_target = max(
+                    abs(candidate.x - near_pos.x), abs(candidate.y - near_pos.y)
+                )
+                if dist_to_target < best_dist:
+                    best_dist = dist_to_target
+                    best = candidate
+        return best
+
+    def _is_free_tile(self, pos: Position) -> bool:
+        if not self.grid.is_within_bounds(pos):
+            return False
+        for eid, p in self._positions.items():
+            if p == pos and self._characters[eid].state != CharacterState.DEAD:
+                return False
+        for obj in self._map_objects.values():
+            if not obj.is_destroyed and obj.position == pos and obj.blocks_movement:
+                return False
+        return True
 
     def _execute_throw(self, agent: str, target_pos: Position) -> None:
         if self._turn_manager.get_pa(agent) < 2:

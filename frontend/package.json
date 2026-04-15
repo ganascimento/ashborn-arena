@@ -9,6 +9,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@iconify-icons/game-icons": "^1.2.1",
     "phaser": "^3.80.0"
   },
   "devDependencies": {

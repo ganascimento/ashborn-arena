@@ -21,7 +21,7 @@ import { BattleActiveMarker } from "./battle-active-marker";
 import { BattleCombatLog, formatEventForLog } from "./battle-combat-log";
 import { CharacterDetailPanel } from "./battle-detail-panel";
 import type { DetailPanelData } from "./battle-detail-panel";
-import { calculateMovementCost } from "./movement-cost";
+import { loadAbilityIcons } from "./ability-icons";
 import { updateStateFromEvent } from "./update-state";
 
 const TILE_SIZE = 64;
@@ -118,6 +118,7 @@ export default class BattleScene extends Phaser.Scene {
   }
 
   create() {
+    loadAbilityIcons(this);
     this.renderGrid();
     this.renderMapObjects();
     this.renderCharacters();
@@ -155,7 +156,7 @@ export default class BattleScene extends Phaser.Scene {
     this.hud = new BattleHud(this);
     this.rangeOverlay = new BattleRangeOverlay(this, TILE_SIZE, GRID_OFFSET_X, GRID_OFFSET_Y, GRID_COLS, GRID_ROWS);
     this.activeMarker = new BattleActiveMarker(this);
-    this.combatLog = new BattleCombatLog(this, 700, 450, 300, 200);
+    this.combatLog = new BattleCombatLog(this, 32, 624, 636, 88);
     this.detailPanel = new CharacterDetailPanel(this);
 
     for (const [id, entry] of this.characters) {
@@ -231,9 +232,13 @@ export default class BattleScene extends Phaser.Scene {
         fontStyle: "bold",
       }).setOrigin(0.5);
       const container = this.add.container(px, py, [circle, label]);
+      container.setDepth(10);
       container.setSize(48, 48);
       container.setInteractive(new Phaser.Geom.Circle(0, 0, 24), Phaser.Geom.Circle.Contains);
-      container.on("pointerdown", () => this.onCharacterClick(char.entity_id));
+      container.on("pointerdown", (_pointer: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => {
+        event.stopPropagation();
+        this.onCharacterClick(char.entity_id);
+      });
       this.characters.set(char.entity_id, {
         data: { ...char },
         sprite: container,
@@ -497,23 +502,10 @@ export default class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const enemy = this.getCharacterAt(x, y);
-    if (enemy && enemy.data.team !== "player" && enemy.status === "active") {
+    const charAtTile = this.getCharacterAt(x, y);
+    if (charAtTile && charAtTile.data.team !== "player") {
       this.wsClient.sendBasicAttack(this.currentCharacter, [x, y]);
       return;
-    }
-
-    const anyChar = this.getCharacterAt(x, y);
-    if (anyChar) return;
-
-    for (const entry of this.mapObjects.values()) {
-      if (
-        entry.data.position.x === x &&
-        entry.data.position.y === y &&
-        entry.data.blocks_movement
-      ) {
-        return;
-      }
     }
 
     this.wsClient.sendMove(this.currentCharacter, [x, y]);
@@ -550,29 +542,18 @@ export default class BattleScene extends Phaser.Scene {
   // --- PA and Cooldown Tracking ---
 
   private updatePAFromAction(msg: WsActionResult) {
-    let cost = 0;
-    if (msg.action === "move") {
-      cost = calculateMovementCost(msg.events);
-    } else if (msg.action === "basic_attack") {
-      cost = 2;
-    } else if (msg.action === "ability") {
-      const abilityId = msg.ability;
-      if (abilityId) {
-        const charEntry = this.characters.get(this.currentCharacter);
-        if (charEntry) {
-          const ability = charEntry.data.abilities.find(a => a.id === abilityId);
-          if (ability) {
-            cost = ability.pa_cost;
-            if (ability.cooldown > 0) {
-              this.startCooldownForCharacter(this.currentCharacter, ability.id, ability.cooldown);
-            }
-          }
+    this.currentPA = msg.pa;
+    this.abilityBar.setPA(msg.pa);
+
+    if (msg.action === "ability" && msg.ability) {
+      const charEntry = this.characters.get(this.currentCharacter);
+      if (charEntry) {
+        const ability = charEntry.data.abilities.find(a => a.id === msg.ability);
+        if (ability && ability.cooldown > 0) {
+          this.startCooldownForCharacter(this.currentCharacter, ability.id, ability.cooldown);
         }
       }
     }
-
-    this.currentPA = Math.max(0, this.currentPA - cost);
-    this.abilityBar.deductPA(cost);
   }
 
   private tickCooldownsForCharacter(charId: string) {
@@ -618,10 +599,27 @@ export default class BattleScene extends Phaser.Scene {
   private refreshHud() {
     this.hud.updateAllBars(this.characters, (x, y) => this.gridToPixel(x, y));
     for (const [id, entry] of this.characters) {
-      if (entry.status === "dead") continue;
+      if (entry.status === "dead") {
+        entry.sprite.setAlpha(0.25);
+        entry.circle.setFillStyle(0x555555);
+        continue;
+      }
+      if (entry.status === "knocked_out") {
+        entry.sprite.setAlpha(0.5);
+        entry.circle.setFillStyle(0x888888);
+      } else {
+        entry.sprite.setAlpha(1);
+        const teamColor = entry.data.team === "player" ? 0x4488ff : 0xff4444;
+        entry.circle.setFillStyle(teamColor);
+      }
       const { px, py } = this.gridToPixel(entry.data.position.x, entry.data.position.y);
       const effects = this.activeEffects.get(id) ?? new Set();
       this.hud.updateStatusIcons(id, px, py, effects);
+    }
+    const current = this.characters.get(this.currentCharacter);
+    if (current && current.status !== "dead") {
+      const { px, py } = this.gridToPixel(current.data.position.x, current.data.position.y);
+      this.activeMarker.show(px, py, current.data.team);
     }
   }
 
@@ -664,11 +662,7 @@ export default class BattleScene extends Phaser.Scene {
 
   private getCharacterAt(x: number, y: number): CharacterEntry | undefined {
     for (const entry of this.characters.values()) {
-      if (
-        entry.data.position.x === x &&
-        entry.data.position.y === y &&
-        entry.status !== "dead"
-      ) {
+      if (entry.data.position.x === x && entry.data.position.y === y) {
         return entry;
       }
     }

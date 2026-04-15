@@ -23,6 +23,8 @@ const MOCK_DEFAULTS_RESPONSE: BuildsDefaultsResponse = {
           damage_type: "physical",
           heal_base: 0,
           elemental_tag: "",
+          effects: [],
+          movement_type: "",
         },
       ],
     },

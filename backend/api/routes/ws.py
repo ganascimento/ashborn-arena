@@ -134,7 +134,11 @@ async def _handle_player_turn(ws: WebSocket, battle, agent: str, player_ids: set
             continue
 
         events = battle.execute_action(action_type, target_tile)
-        await ws.send_json(make_action_result(char_id, action_str, events))
+        pa = battle.get_pa(char_id)
+        extra: dict = {"pa": pa}
+        if action_str == "ability":
+            extra["ability"] = data.get("ability")
+        await ws.send_json(make_action_result(char_id, action_str, events, **extra))
 
         if action_str == "end_turn":
             if not battle.is_over:
