@@ -440,8 +440,7 @@ O cenario possui objetos destrutiveis e interativos.
 | **Barril**      | 12  | Sim           | Sim            | Sim        | Sim                        |
 | **Arvore**      | 20  | Sim           | Sim            | Sim        | Nao                        |
 | **Arbusto**     | 5   | Nao           | Nao            | Sim        | Nao                        |
-| **Rocha**       | —   | Sim           | Sim            | Nao        | Nao (indestrutivel)        |
-| **Poca d'agua** | —   | Nao           | Nao            | Nao        | Nao (apaga fogo adjacente) |
+| **Rocha**       | 30  | Sim           | Sim            | Nao        | Nao (destrutivel)          |
 
 ### 6.5 Interacoes com o Cenario
 
@@ -474,28 +473,27 @@ O cenario possui objetos destrutiveis e interativos.
 
 - Ataques a distancia requerem **linha de visao livre** ao alvo
 - LoS: linha reta do centro do tile do atacante ao centro do tile do alvo
-- Objeto com "bloqueia visao" no caminho = **ataque bloqueado**
-- **AoE**: precisa de LoS ao ponto alvo (centro do efeito), efeito expande normalmente a partir dali (pode atingir alvos atras de cobertura)
+- Objeto com "bloqueia visao" no caminho = **projetil interceptado pelo objeto** (o objeto recebe o dano em vez do alvo)
+- **AoE**: precisa de LoS ao ponto alvo (centro do efeito); se bloqueado, o objeto interceptador recebe o dano
+- **Investida bloqueada**: se um objeto bloqueia o caminho da investida, o objeto recebe dano e o personagem para adjacente (ou no tile se o objeto for destruido)
 - **Meteoro**: ignora LoS (vem de cima — contrapartida do delay de 1 turno)
+- **Corpo a corpo**: nao requer LoS (adjacente = sempre valido)
 
 ### 6.7 Biomas
 
-4 biomas com distribuicoes diferentes de objetos. Sem efeitos mecanicos extras no MVP.
+2 biomas com distribuicoes diferentes de objetos. Sem efeitos mecanicos extras no MVP.
 
-| Bioma                | Objetos comuns                           | Caracteristica visual                        |
-| -------------------- | ---------------------------------------- | -------------------------------------------- |
-| **Floresta (dia)**   | Arvores, arbustos, rochas, pocas         | Muita cobertura, caminhos entre arvores      |
-| **Floresta (noite)** | Mesmo pool                               | Variante visual (sem efeito mecanico no MVP) |
-| **Vila**             | Caixas, barris, rochas (muros), arbustos | Corredores e choke points                    |
-| **Pantano**          | Pocas, arbustos, arvores esparsas        | Area aberta, pocas apagam fogo               |
+| Bioma              | Objetos comuns                           | Caracteristica visual                   |
+| ------------------ | ---------------------------------------- | --------------------------------------- |
+| **Floresta (dia)** | Arvores, arbustos, rochas                | Muita cobertura, caminhos entre arvores |
+| **Vila**           | Caixas, barris, rochas (muros), arbustos | Corredores e choke points               |
 
 ### 6.8 Geracao Procedural
 
 - Mapas gerados proceduralmente a cada batalha
-- **Semi-simetrico**: espelhado no eixo central (colunas 5-6) com pequenas variacoes
 - **Densidade**: 12-16 objetos por mapa (~15-20% de cobertura)
-- **Zonas de spawn**: colunas 1-2 e 9-10 sempre livres
-- **Garantias**: minimo 2 coberturas no meio do mapa (ambos os lados), minimo 1 corredor aberto para linha de visao
+- **Area de placement**: colunas 2-7, linhas 1-6 (bordas e zonas de spawn sempre livres)
+- **Garantias**: minimo 2 coberturas no meio do mapa, minimo 1 corredor aberto para linha de visao
 
 ---
 
@@ -530,6 +528,7 @@ Toda informacao do jogador e armazenada no **localStorage** do browser:
    │   ├─ Carregar build pre-definido OU build salvo no localStorage
    │   ├─ Ajustar distribuicao de atributos (10 pontos, cap +5)
    │   └─ Escolher 5 habilidades das 11 disponiveis
+   ├─ Opcao: "IA joga por mim" (auto-battle — IA controla ambos os lados)
    └─ Confirmar e iniciar batalha
 
 3. Tela de Batalha (WebSocket)
@@ -635,7 +634,7 @@ Todas as 34 questoes resolvidas.
 21. **Tamanho do mapa** — 10 colunas x 8 linhas (80 tiles). _(secao 6.1)_
 22. **Terreno** — Objetos destrutiveis e interativos. Fogo, arremesso, cobertura. _(secoes 6.4-6.5)_
 23. **Obstaculos** — Objetos bloqueiam movimento e/ou visao. LoS obrigatoria para ranged. _(secoes 6.4, 6.6)_
-24. **Cenarios variados** — 4 biomas, geracao procedural semi-simetrica, 12-16 objetos. _(secoes 6.7-6.8)_
+24. **Cenarios variados** — 2 biomas (Floresta, Vila), geracao procedural, 12-16 objetos. _(secoes 6.7-6.8)_
 
 ### IA e Treinamento
 

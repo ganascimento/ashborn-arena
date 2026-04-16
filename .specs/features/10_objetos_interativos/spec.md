@@ -39,13 +39,13 @@ Implementar o modelo de objetos interativos do cenario (Caixa, Barril, Arvore, A
 - [ ] Barril: max_hp=12, blocks_movement=True, blocks_los=True, flammable=True, throwable=True
 - [ ] Arvore: max_hp=20, blocks_movement=True, blocks_los=True, flammable=True, throwable=False
 - [ ] Arbusto: max_hp=5, blocks_movement=False, blocks_los=False, flammable=True, throwable=False
-- [ ] Rocha: indestructible (max_hp=None), blocks_movement=True, blocks_los=True, flammable=False, throwable=False
+- [ ] Rocha: max_hp=30, blocks_movement=True, blocks_los=True, flammable=False, throwable=False
 - [ ] Poca: indestructible (max_hp=None), blocks_movement=False, blocks_los=False, flammable=False, throwable=False
 
 ### Criacao de Objetos
 
 - [ ] `MapObject.from_type(object_type, entity_id, position)` cria objeto com propriedades corretas do template
-- [ ] MapObject criado tem current_hp == max_hp (ou None para indestrutiveis)
+- [ ] MapObject criado tem current_hp == max_hp (ou None para Poca)
 - [ ] MapObject inicia com on_fire=False, fire_turns_remaining=0, is_destroyed=False
 
 ### Dano e Destruicao (prd.md 6.5 — atacar objeto)
@@ -53,7 +53,7 @@ Implementar o modelo de objetos interativos do cenario (Caixa, Barril, Arvore, A
 - [ ] `apply_damage(amount)` reduz current_hp — Caixa HP=10, damage=5 → HP=5
 - [ ] Caixa HP=10, damage=10 → HP=0, is_destroyed=True
 - [ ] Caixa HP=10, damage=15 → HP=-5, is_destroyed=True (overkill)
-- [ ] Objeto indestructivel (Rocha, Poca): apply_damage nao faz nada, retorna False
+- [ ] Objeto indestructivel (Poca): apply_damage nao faz nada, retorna False
 - [ ] Objeto ja destruido: apply_damage nao faz nada
 - [ ] apply_damage retorna True se o objeto foi destruido nesta chamada, False caso contrario
 

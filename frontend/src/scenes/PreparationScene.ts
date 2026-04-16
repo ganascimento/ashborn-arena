@@ -13,6 +13,7 @@ import {
   validateAbilitySelection,
   validateTeam,
 } from "../network/validation";
+import { drawPanel } from "./ui-utils";
 
 const CLASS_DISPLAY: Record<string, string> = {
   warrior: "Guerreiro",
@@ -47,11 +48,16 @@ export default class PreparationScene extends Phaser.Scene {
   private defaultBuilds: DefaultBuild[] = [];
   private teamMembers: TeamMember[] = [];
   private selectedMemberIndex = -1;
+  private autoBattle = false;
 
   private classPanelObjects: Phaser.GameObjects.GameObject[] = [];
   private buildPanelObjects: Phaser.GameObjects.GameObject[] = [];
   private teamListObjects: Phaser.GameObjects.GameObject[] = [];
-  private confirmBtn!: Phaser.GameObjects.Text;
+  private confirmBtnContainer!: Phaser.GameObjects.Container;
+  private confirmBtnBg!: Phaser.GameObjects.Graphics;
+  private confirmBtnText!: Phaser.GameObjects.Text;
+  private confirmValid = false;
+  private autoBattleBtn!: Phaser.GameObjects.Text;
   private errorText!: Phaser.GameObjects.Text;
 
   constructor() {
@@ -90,9 +96,24 @@ export default class PreparationScene extends Phaser.Scene {
   }
 
   private renderUI() {
+    drawPanel(this, 10, 55, 232, 425, {
+      fill: 0x14142a,
+      fillAlpha: 0.85,
+      border: 0x2a2a55,
+      radius: 8,
+    });
+    drawPanel(this, LEFT_PANEL_WIDTH + 10, 55, 1280 - LEFT_PANEL_WIDTH - 30, 570, {
+      fill: 0x121228,
+      fillAlpha: 0.6,
+      border: 0x2a2a55,
+      borderAlpha: 0.5,
+      radius: 8,
+    });
+
     this.renderBackButton();
     this.renderClassPanel();
     this.renderTeamList();
+    this.renderAutoBattleToggle();
     this.renderConfirmButton();
     this.renderErrorText();
   }
@@ -100,14 +121,14 @@ export default class PreparationScene extends Phaser.Scene {
   private renderBackButton() {
     const btn = this.add
       .text(20, 20, "\u2190 Voltar", {
-        fontSize: "20px",
-        color: "#aaaaaa",
+        fontSize: "18px",
+        color: "#7777aa",
         fontFamily: FONT,
       })
       .setInteractive({ useHandCursor: true });
 
-    btn.on("pointerover", () => btn.setColor("#ffffff"));
-    btn.on("pointerout", () => btn.setColor("#aaaaaa"));
+    btn.on("pointerover", () => btn.setColor("#bbbbdd"));
+    btn.on("pointerout", () => btn.setColor("#7777aa"));
     btn.on("pointerdown", () => this.scene.start("MenuScene"));
   }
 
@@ -115,12 +136,17 @@ export default class PreparationScene extends Phaser.Scene {
     this.classPanelObjects.forEach((o) => o.destroy());
     this.classPanelObjects = [];
 
-    const title = this.add.text(20, 70, "Selecionar Classes", {
-      fontSize: "20px",
-      color: "#e0e0e0",
+    const title = this.add.text(22, 70, "Selecionar Classes", {
+      fontSize: "16px",
+      color: "#8888aa",
       fontFamily: FONT,
     });
     this.classPanelObjects.push(title);
+
+    const titleLine = this.add.graphics();
+    titleLine.lineStyle(1, 0x333366, 0.4);
+    titleLine.lineBetween(22, 94, 228, 94);
+    this.classPanelObjects.push(titleLine);
 
     const classIds = ["warrior", "mage", "cleric", "archer", "assassin"];
     const startY = 110;
@@ -153,13 +179,19 @@ export default class PreparationScene extends Phaser.Scene {
     this.teamListObjects = [];
 
     const headerY = 330;
+
+    const divider = this.add.graphics();
+    divider.lineStyle(1, 0x333366, 0.3);
+    divider.lineBetween(22, headerY - 10, 228, headerY - 10);
+    this.teamListObjects.push(divider);
+
     const header = this.add.text(
-      20,
+      22,
       headerY,
       `Time: ${this.teamMembers.length}/3`,
       {
-        fontSize: "18px",
-        color: "#e0e0e0",
+        fontSize: "16px",
+        color: "#8888aa",
         fontFamily: FONT,
       },
     );
@@ -220,9 +252,16 @@ export default class PreparationScene extends Phaser.Scene {
       70,
       CLASS_DISPLAY[member.classId],
       {
-        fontSize: "24px",
+        fontSize: "22px",
         color: "#ffd700",
         fontFamily: FONT,
+        shadow: {
+          offsetX: 0,
+          offsetY: 0,
+          color: "#ffd700",
+          blur: 12,
+          fill: true,
+        },
       },
     );
     this.buildPanelObjects.push(className);
@@ -362,22 +401,24 @@ export default class PreparationScene extends Phaser.Scene {
     );
     this.buildPanelObjects.push(abilitiesHeader);
 
-    const colWidth = Math.floor(panelW / 2);
-    const rowsPerCol = 6;
+    const cols = 3;
+    const colWidth = Math.floor(panelW / cols);
+    const rowsPerCol = 4;
+    const rowHeight = 48;
 
     classInfo.abilities.forEach((ability, i) => {
-      const col = i < rowsPerCol ? 0 : 1;
-      const row = col === 0 ? i : i - rowsPerCol;
+      const col = Math.floor(i / rowsPerCol);
+      const row = i % rowsPerCol;
       const ax = x + col * colWidth;
-      const ay = startY + 30 + row * 55;
+      const ay = startY + 30 + row * rowHeight;
 
       const isSelected = member.abilityIds.includes(ability.id);
       const maxReached = selectedCount >= 5 && !isSelected;
 
       const checkbox = isSelected ? "[x]" : "[ ]";
-      const dmgInfo = this.formatAbilityInfo(ability);
+      const stats = this.formatAbilityStats(ability);
       const line1 = `${checkbox} ${ability.name}`;
-      const line2 = `    PA:${ability.pa_cost} CD:${ability.cooldown} Alcance:${ability.max_range} ${dmgInfo}`;
+      const line2 = `    ${stats}`;
 
       const color = maxReached
         ? "#555555"
@@ -387,10 +428,10 @@ export default class PreparationScene extends Phaser.Scene {
 
       const abilityText = this.add
         .text(ax, ay, `${line1}\n${line2}`, {
-          fontSize: "13px",
+          fontSize: "12px",
           color,
           fontFamily: FONT,
-          lineSpacing: 2,
+          lineSpacing: 1,
         })
         .setInteractive({ useHandCursor: !maxReached });
 
@@ -413,14 +454,14 @@ export default class PreparationScene extends Phaser.Scene {
     });
   }
 
-  private formatAbilityInfo(ability: AbilityOut): string {
-    const parts: string[] = [];
+  private formatAbilityStats(ability: AbilityOut): string {
+    const parts = [`PA:${ability.pa_cost}`, `CD:${ability.cooldown}`, `R:${ability.max_range}`];
 
     if (ability.damage_base > 0) {
-      parts.push(`Dano:${ability.damage_base} ${ability.damage_type}`);
+      parts.push(`D:${ability.damage_base}`);
     }
     if (ability.heal_base > 0) {
-      parts.push(`Cura:${ability.heal_base}`);
+      parts.push(`H:${ability.heal_base}`);
     }
     if (ability.elemental_tag && ability.elemental_tag !== "none") {
       parts.push(`[${ability.elemental_tag}]`);
@@ -502,20 +543,69 @@ export default class PreparationScene extends Phaser.Scene {
     this.renderBuildPanel();
   }
 
-  private renderConfirmButton() {
-    this.confirmBtn = this.add
-      .text(640, 690, "Confirmar", {
-        fontSize: "24px",
-        color: "#1a1a2e",
+  private renderAutoBattleToggle() {
+    const checkbox = this.autoBattle ? "[x]" : "[ ]";
+    this.autoBattleBtn = this.add
+      .text(30, 495, `${checkbox} IA joga por mim`, {
+        fontSize: "14px",
+        color: this.autoBattle ? "#44ff44" : "#8888aa",
         fontFamily: FONT,
-        backgroundColor: "#555555",
-        padding: { x: 20, y: 8 },
       })
-      .setOrigin(0.5)
       .setInteractive({ useHandCursor: true });
 
-    this.confirmBtn.on("pointerdown", () => this.onConfirm());
+    this.autoBattleBtn.on("pointerover", () =>
+      this.autoBattleBtn.setColor(this.autoBattle ? "#88ff88" : "#bbbbdd"),
+    );
+    this.autoBattleBtn.on("pointerout", () =>
+      this.autoBattleBtn.setColor(this.autoBattle ? "#44ff44" : "#8888aa"),
+    );
+    this.autoBattleBtn.on("pointerdown", () => {
+      this.autoBattle = !this.autoBattle;
+      const cb = this.autoBattle ? "[x]" : "[ ]";
+      this.autoBattleBtn.setText(`${cb} IA joga por mim`);
+      this.autoBattleBtn.setColor(this.autoBattle ? "#44ff44" : "#8888aa");
+    });
+  }
+
+  private renderConfirmButton() {
+    const cx = 640;
+    const cy = 690;
+
+    this.confirmBtnBg = this.add.graphics();
+    this.confirmBtnText = this.add
+      .text(0, 0, "Confirmar", {
+        fontSize: "20px",
+        color: "#1a1a2e",
+        fontFamily: FONT,
+        fontStyle: "bold",
+      })
+      .setOrigin(0.5);
+
+    this.confirmBtnContainer = this.add.container(cx, cy, [
+      this.confirmBtnBg,
+      this.confirmBtnText,
+    ]);
+    this.confirmBtnContainer.setSize(220, 48);
+    this.confirmBtnContainer.setInteractive({ useHandCursor: true });
+
+    this.confirmBtnContainer.on("pointerover", () => {
+      if (this.confirmValid) this.confirmBtnContainer.setScale(1.05);
+    });
+    this.confirmBtnContainer.on("pointerout", () =>
+      this.confirmBtnContainer.setScale(1),
+    );
+    this.confirmBtnContainer.on("pointerdown", () => this.onConfirm());
+
     this.updateConfirmButton();
+  }
+
+  private drawConfirmBg(color: number) {
+    const w = 220;
+    const h = 48;
+    const radius = 14;
+    this.confirmBtnBg.clear();
+    this.confirmBtnBg.fillStyle(color, 1);
+    this.confirmBtnBg.fillRoundedRect(-w / 2, -h / 2, w, h, radius);
   }
 
   private renderErrorText() {
@@ -546,13 +636,11 @@ export default class PreparationScene extends Phaser.Scene {
   }
 
   private updateConfirmButton() {
-    if (!this.confirmBtn) return;
+    if (!this.confirmBtnBg) return;
 
-    const valid = this.isTeamValid();
-    this.confirmBtn.setStyle({
-      backgroundColor: valid ? "#44ff44" : "#555555",
-      color: "#1a1a2e",
-    });
+    this.confirmValid = this.isTeamValid();
+    this.drawConfirmBg(this.confirmValid ? 0x44ff44 : 0x555555);
+    this.confirmBtnText.setColor(this.confirmValid ? "#1a1a2e" : "#888888");
   }
 
   private async onConfirm() {
@@ -576,20 +664,21 @@ export default class PreparationScene extends Phaser.Scene {
     }));
 
     try {
-      this.confirmBtn.setText("Iniciando...");
-      this.confirmBtn.disableInteractive();
+      this.confirmBtnText.setText("Iniciando...");
+      this.confirmBtnContainer.disableInteractive();
 
-      const response = await startBattle(this.difficulty, team);
+      const response = await startBattle(this.difficulty, team, this.autoBattle);
 
       this.scene.start("BattleScene", {
         session_id: response.session_id,
         initial_state: response.initial_state,
+        auto_battle: this.autoBattle,
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Erro desconhecido";
       this.errorText.setText(`Erro ao iniciar batalha: ${msg}`);
-      this.confirmBtn.setText("Confirmar");
-      this.confirmBtn.setInteractive({ useHandCursor: true });
+      this.confirmBtnText.setText("Confirmar");
+      this.confirmBtnContainer.setInteractive({ useHandCursor: true });
     }
   }
 }

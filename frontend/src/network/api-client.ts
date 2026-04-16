@@ -20,11 +20,12 @@ export async function getDefaults(): Promise<BuildsDefaultsResponse> {
 export async function startBattle(
   difficulty: string,
   team: CharacterRequest[],
+  autoBattle = false,
 ): Promise<BattleStartResponse> {
   const res = await fetch(`${API_BASE_URL}/battle/start`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ difficulty, team }),
+    body: JSON.stringify({ difficulty, team, auto_battle: autoBattle }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

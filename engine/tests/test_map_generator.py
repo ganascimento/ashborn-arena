@@ -9,25 +9,25 @@ from engine.models.position import Position
 
 
 class TestBiomeEnum:
-    def test_has_four_values(self):
-        assert len(Biome) == 4
+    def test_has_two_values(self):
+        assert len(Biome) == 2
 
     def test_values(self):
         assert Biome.FOREST_DAY.value == "forest_day"
-        assert Biome.FOREST_NIGHT.value == "forest_night"
         assert Biome.VILLAGE.value == "village"
-        assert Biome.SWAMP.value == "swamp"
 
 
 class TestGenerateMapBasic:
-    def test_returns_grid_and_objects(self):
-        grid, objects = generate_map(Biome.VILLAGE, random.Random(42))
+    @pytest.mark.parametrize("biome", list(Biome))
+    def test_returns_grid_and_objects(self, biome):
+        grid, objects = generate_map(biome, random.Random(42))
         assert isinstance(grid, Grid)
         assert isinstance(objects, list)
         assert all(isinstance(o, MapObject) for o in objects)
 
-    def test_grid_dimensions(self):
-        grid, _ = generate_map(Biome.VILLAGE, random.Random(42))
+    @pytest.mark.parametrize("biome", list(Biome))
+    def test_grid_dimensions(self, biome):
+        grid, _ = generate_map(biome, random.Random(42))
         assert grid.COLS == 10
         assert grid.ROWS == 8
 
@@ -36,51 +36,28 @@ class TestDensity:
     @pytest.mark.parametrize("seed", range(20))
     def test_object_count_in_range(self, seed):
         _, objects = generate_map(Biome.VILLAGE, random.Random(seed))
-        assert 12 <= len(objects) <= 16, f"seed {seed}: got {len(objects)} objects"
+        assert 10 <= len(objects) <= 18, f"seed {seed}: got {len(objects)} objects"
 
 
-class TestSpawnZones:
+class TestSpawnAndBorderZones:
+    @pytest.mark.parametrize("biome", list(Biome))
     @pytest.mark.parametrize("seed", range(10))
-    def test_no_objects_in_team_a_spawn(self, seed):
-        _, objects = generate_map(Biome.VILLAGE, random.Random(seed))
+    def test_no_objects_in_spawn_or_border(self, biome, seed):
+        _, objects = generate_map(biome, random.Random(seed))
         for obj in objects:
-            assert obj.position.x >= 2, (
-                f"Object at col {obj.position.x} in Team A spawn"
+            assert 2 <= obj.position.x <= 7, (
+                f"Object at col {obj.position.x} outside inner cols"
             )
-
-    @pytest.mark.parametrize("seed", range(10))
-    def test_no_objects_in_team_b_spawn(self, seed):
-        _, objects = generate_map(Biome.VILLAGE, random.Random(seed))
-        for obj in objects:
-            assert obj.position.x <= 7, (
-                f"Object at col {obj.position.x} in Team B spawn"
+            assert 1 <= obj.position.y <= 6, (
+                f"Object at row {obj.position.y} on border row"
             )
-
-
-class TestSemiSymmetry:
-    @pytest.mark.parametrize("seed", range(10))
-    def test_majority_mirrored(self, seed):
-        _, objects = generate_map(Biome.FOREST_DAY, random.Random(seed))
-        positions = {obj.position for obj in objects}
-        mirrored_count = 0
-        for pos in positions:
-            mirror = Position(9 - pos.x, pos.y)
-            for candidate in positions:
-                if (
-                    abs(candidate.x - mirror.x) <= 1
-                    and abs(candidate.y - mirror.y) <= 1
-                ):
-                    mirrored_count += 1
-                    break
-        assert mirrored_count > len(objects) * 0.5, (
-            f"seed {seed}: only {mirrored_count}/{len(objects)} mirrored"
-        )
 
 
 class TestStructuralGuarantees:
+    @pytest.mark.parametrize("biome", list(Biome))
     @pytest.mark.parametrize("seed", range(20))
-    def test_min_2_blocking_in_center(self, seed):
-        _, objects = generate_map(Biome.VILLAGE, random.Random(seed))
+    def test_min_2_blocking_in_center(self, biome, seed):
+        _, objects = generate_map(biome, random.Random(seed))
         blocking_center = [
             o for o in objects if o.blocks_movement and 3 <= o.position.x <= 6
         ]
@@ -88,12 +65,13 @@ class TestStructuralGuarantees:
             f"seed {seed}: only {len(blocking_center)} blocking objects in center"
         )
 
+    @pytest.mark.parametrize("biome", list(Biome))
     @pytest.mark.parametrize("seed", range(20))
-    def test_min_1_open_corridor(self, seed):
-        _, objects = generate_map(Biome.VILLAGE, random.Random(seed))
+    def test_min_1_open_corridor(self, biome, seed):
+        _, objects = generate_map(biome, random.Random(seed))
         blocking_positions = {o.position for o in objects if o.blocks_movement}
         open_rows = 0
-        for row in range(8):
+        for row in range(1, 7):
             row_clear = all(
                 Position(col, row) not in blocking_positions for col in range(2, 8)
             )
@@ -108,13 +86,6 @@ class TestBiomePools:
             ObjectType.TREE,
             ObjectType.BUSH,
             ObjectType.ROCK,
-            ObjectType.PUDDLE,
-        },
-        Biome.FOREST_NIGHT: {
-            ObjectType.TREE,
-            ObjectType.BUSH,
-            ObjectType.ROCK,
-            ObjectType.PUDDLE,
         },
         Biome.VILLAGE: {
             ObjectType.CRATE,
@@ -122,7 +93,6 @@ class TestBiomePools:
             ObjectType.ROCK,
             ObjectType.BUSH,
         },
-        Biome.SWAMP: {ObjectType.PUDDLE, ObjectType.BUSH, ObjectType.TREE},
     }
 
     @pytest.mark.parametrize("biome", list(Biome))
@@ -136,18 +106,21 @@ class TestBiomePools:
 
 
 class TestValidity:
-    def test_no_duplicate_positions(self):
-        _, objects = generate_map(Biome.VILLAGE, random.Random(42))
+    @pytest.mark.parametrize("biome", list(Biome))
+    def test_no_duplicate_positions(self, biome):
+        _, objects = generate_map(biome, random.Random(42))
         positions = [o.position for o in objects]
         assert len(positions) == len(set(positions))
 
-    def test_unique_entity_ids(self):
-        _, objects = generate_map(Biome.VILLAGE, random.Random(42))
+    @pytest.mark.parametrize("biome", list(Biome))
+    def test_unique_entity_ids(self, biome):
+        _, objects = generate_map(biome, random.Random(42))
         ids = [o.entity_id for o in objects]
         assert len(ids) == len(set(ids))
 
-    def test_grid_occupants_match_objects(self):
-        grid, objects = generate_map(Biome.VILLAGE, random.Random(42))
+    @pytest.mark.parametrize("biome", list(Biome))
+    def test_grid_occupants_match_objects(self, biome):
+        grid, objects = generate_map(biome, random.Random(42))
         for obj in objects:
             occupants = grid.get_occupants(obj.position)
             matching = [
@@ -163,9 +136,10 @@ class TestValidity:
 
 
 class TestDeterminism:
-    def test_same_seed_same_map(self):
-        _, objects_a = generate_map(Biome.VILLAGE, random.Random(42))
-        _, objects_b = generate_map(Biome.VILLAGE, random.Random(42))
+    @pytest.mark.parametrize("biome", list(Biome))
+    def test_same_seed_same_map(self, biome):
+        _, objects_a = generate_map(biome, random.Random(42))
+        _, objects_b = generate_map(biome, random.Random(42))
         positions_a = [(o.object_type, o.position) for o in objects_a]
         positions_b = [(o.object_type, o.position) for o in objects_b]
         assert positions_a == positions_b

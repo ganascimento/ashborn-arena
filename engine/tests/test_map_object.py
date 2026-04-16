@@ -15,8 +15,8 @@ from engine.models.position import Position
 
 
 class TestObjectType:
-    def test_has_six_values(self):
-        assert len(ObjectType) == 6
+    def test_has_five_values(self):
+        assert len(ObjectType) == 5
 
     def test_values(self):
         assert ObjectType.CRATE.value == "crate"
@@ -24,7 +24,6 @@ class TestObjectType:
         assert ObjectType.TREE.value == "tree"
         assert ObjectType.BUSH.value == "bush"
         assert ObjectType.ROCK.value == "rock"
-        assert ObjectType.PUDDLE.value == "puddle"
 
 
 class TestObjectTemplates:
@@ -62,19 +61,12 @@ class TestObjectTemplates:
 
     def test_rock(self):
         t = OBJECT_TEMPLATES[ObjectType.ROCK]
-        assert t.max_hp is None
+        assert t.max_hp == 30
         assert t.blocks_movement is True
         assert t.blocks_los is True
         assert t.flammable is False
         assert t.throwable is False
 
-    def test_puddle(self):
-        t = OBJECT_TEMPLATES[ObjectType.PUDDLE]
-        assert t.max_hp is None
-        assert t.blocks_movement is False
-        assert t.blocks_los is False
-        assert t.flammable is False
-        assert t.throwable is False
 
 
 class TestMapObjectCreation:
@@ -90,10 +82,10 @@ class TestMapObjectCreation:
         assert obj.flammable is True
         assert obj.throwable is True
 
-    def test_from_type_rock_indestructible(self):
+    def test_from_type_rock(self):
         obj = MapObject.from_type(ObjectType.ROCK, "rock_1", Position(5, 5))
-        assert obj.current_hp is None
-        assert obj.max_hp is None
+        assert obj.current_hp == 30
+        assert obj.max_hp == 30
 
     def test_initial_state(self):
         obj = MapObject.from_type(ObjectType.CRATE, "c1", Position(0, 0))
@@ -123,12 +115,18 @@ class TestApplyDamage:
         assert obj.is_destroyed is True
         assert result is True
 
-    def test_indestructible_ignores_damage(self):
+    def test_rock_takes_damage(self):
         obj = MapObject.from_type(ObjectType.ROCK, "r1", Position(0, 0))
         result = obj.apply_damage(10)
-        assert obj.current_hp is None
+        assert obj.current_hp == 20
         assert obj.is_destroyed is False
         assert result is False
+
+    def test_rock_can_be_destroyed(self):
+        obj = MapObject.from_type(ObjectType.ROCK, "r1", Position(0, 0))
+        result = obj.apply_damage(30)
+        assert obj.is_destroyed is True
+        assert result is True
 
     def test_destroyed_ignores_damage(self):
         obj = MapObject.from_type(ObjectType.CRATE, "c1", Position(0, 0))

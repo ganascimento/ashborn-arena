@@ -43,3 +43,12 @@ def has_line_of_sight(
         if tile in blocking_positions:
             return False
     return True
+
+
+def find_first_blocker(
+    origin: Position, target: Position, blocking_positions: set[Position]
+) -> Position | None:
+    for tile in get_tiles_in_line(origin, target):
+        if tile in blocking_positions:
+            return tile
+    return None

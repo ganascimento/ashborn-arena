@@ -108,7 +108,7 @@ def start_battle(req: BattleStartRequest):
     player_ids = battle.team_a_entities
     ai_ids = battle.team_b_entities
 
-    session = session_manager.create(battle, req.difficulty, player_ids, ai_ids)
+    session = session_manager.create(battle, req.difficulty, player_ids, ai_ids, req.auto_battle)
 
     characters_out = []
     for eid in battle.all_entities:

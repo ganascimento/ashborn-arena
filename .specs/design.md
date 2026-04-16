@@ -665,8 +665,7 @@ Cada objeto possui propriedades que definem seu comportamento:
 | Barril | 12 | Sim | Sim | Sim | Sim |
 | Arvore | 20 | Sim | Sim | Sim | Nao |
 | Arbusto | 5 | Nao | Nao | Sim | Nao |
-| Rocha | — | Sim | Sim | Nao | Nao |
-| Poca | — | Nao | Nao | Nao | Nao |
+| Rocha | 30 | Sim | Sim | Nao | Nao |
 
 **Arremessar** (caixas, barris):
 - PA: 2, requer adjacencia
@@ -692,29 +691,28 @@ Cada objeto possui propriedades que definem seu comportamento:
 
 - Ataques a distancia requerem LoS livre
 - Calculo: linha reta centro-a-centro entre tiles do atacante e alvo
-- Objeto com "bloqueia LoS" no caminho = ataque bloqueado
-- **AoE**: requer LoS ao ponto alvo (centro do efeito), efeito expande normalmente (pode atingir atras de cobertura)
+- Objeto com "bloqueia LoS" no caminho = **projetil interceptado**: o objeto recebe o dano (pipeline normal, sem esquiva/bloqueio), PA e cooldown gastos normalmente
+- **AoE**: requer LoS ao ponto alvo (centro do efeito); se bloqueado, o objeto interceptador recebe o dano
+- **Investida bloqueada**: objeto no caminho recebe dano; se sobrevive, personagem para adjacente; se destruido, personagem para no tile do objeto
+- **Targeting direto**: ataques e habilidades podem mirar diretamente em objetos (sem personagem no tile)
 - **Meteoro**: ignora LoS (ataque aereo, delay de 1 turno como contrapartida)
 - **Corpo a corpo**: nao requer LoS (adjacente = sempre valido)
 
 #### 4.4 Geracao Procedural
 
 - Mapas gerados a cada batalha
-- Semi-simetrico: espelhado no eixo central (colunas 5-6) com variacoes
 - Densidade: 12-16 objetos (~15-20% cobertura)
-- Zonas de spawn sempre livres
+- Area de placement: colunas 2-7, linhas 1-6 (bordas e zonas de spawn sempre livres)
 - Garantias: min 2 coberturas no meio, min 1 corredor aberto
 
 #### 4.5 Biomas
 
-4 biomas definem o pool de objetos disponivel para a geracao:
+2 biomas definem o pool de objetos disponivel para a geracao:
 
 | Bioma | Pool de objetos | Tendencia |
 |---|---|---|
-| Floresta (dia) | Arvores, arbustos, rochas, pocas | Alta cobertura, caminhos entre arvores |
-| Floresta (noite) | Mesmo pool | Variante visual (sem efeito mecanico no MVP) |
+| Floresta (dia) | Arvores, arbustos, rochas | Alta cobertura, caminhos entre arvores |
 | Vila | Caixas, barris, rochas, arbustos | Corredores, choke points |
-| Pantano | Pocas, arbustos, arvores esparsas | Area aberta, pocas neutralizam fogo |
 
 ### 5. Sistema de IA
 
@@ -839,7 +837,7 @@ models/
 
 **REST** (menu, setup):
 - `GET /builds/defaults` — retorna 5 builds pre-definidos
-- `POST /battle/start` — envia composicao + builds, cria sessao de batalha
+- `POST /battle/start` — envia composicao + builds + `auto_battle` (opcional), cria sessao de batalha
 
 **WebSocket** (batalha):
 
@@ -989,3 +987,20 @@ Exemplos:
 - Dados de cooldown: ler do `playerCooldowns` map existente no BattleScene
 - Dados de efeitos: ler do `activeEffects` map existente no BattleScene
 - Dados de atributos: ler do `CharacterOut.attributes` ja armazenado
+
+#### 7.5 Modo Auto-Battle
+
+Opcao na tela de preparacao que permite a IA jogar no lugar do jogador.
+
+- Campo `auto_battle: bool` no `BattleStartRequest` (default `false`)
+- Backend: se `auto_battle`, turnos do jogador sao tratados como turnos de IA (mesma logica `_handle_ai_turn`)
+- Frontend: desabilita input (clicks no grid, ability bar), turn indicator mostra "IA vs IA"
+- Util para observar a IA em acao, testar builds, debugging
+
+#### 7.6 Robustez do Turno da IA
+
+Protecoes contra travamento no loop de acoes da IA:
+
+- **Fallback de inference**: se a rede neural falha (excecao), cai para heuristic AI com log de warning
+- **Retry loop**: se uma acao da IA nao produz efeito (sem eventos, PA inalterado), tenta novamente ate 5 vezes; apos isso, forca `end_turn`
+- **Timeout de ready**: se o frontend nao envia `ready` em 10s, forca `end_turn` e continua

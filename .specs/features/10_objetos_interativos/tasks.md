@@ -40,12 +40,12 @@ Dependencia: Grupo 2 so executa apos aprovacao dos testes do Grupo 1.
      - PUDDLE: max_hp=None, blocks_movement=False, blocks_los=False, flammable=False, throwable=False
    - **Criacao:**
      - MapObject.from_type(CRATE, "crate_1", Position(3,3)) → current_hp=10, on_fire=False, is_destroyed=False
-     - Indestructible (ROCK): current_hp=None
+     - ROCK: max_hp=30, current_hp=30
    - **Dano e destruicao:**
      - Caixa HP=10, damage=5 → HP=5, not destroyed, returns False
      - Caixa HP=10, damage=10 → HP=0, is_destroyed=True, returns True
      - Caixa HP=10, damage=15 → is_destroyed=True
-     - Rocha: apply_damage(10) → nada muda, returns False
+     - Rocha HP=30: apply_damage(10) → HP=20, not destroyed, returns False
      - Objeto destruido: apply_damage(5) → nada muda
    - **Fogo:**
      - Caixa ignite → on_fire=True, fire_turns=3, returns True

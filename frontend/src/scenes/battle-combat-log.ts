@@ -8,17 +8,26 @@ const LOG_DEPTH = 250;
 export class BattleCombatLog {
   private scene: Phaser.Scene;
   private entries: string[] = [];
-  private bg: Phaser.GameObjects.Rectangle;
+  private bg: Phaser.GameObjects.Graphics;
   private textObj: Phaser.GameObjects.Text;
   private visibleLines: number;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, width: number, height: number) {
+  constructor(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+  ) {
     this.scene = scene;
     this.visibleLines = Math.floor((height - PADDING * 2) / LINE_HEIGHT);
 
-    this.bg = scene.add.rectangle(x + width / 2, y + height / 2, width, height, 0x1a1a2e, 0.85);
-    this.bg.setOrigin(0.5);
+    this.bg = scene.add.graphics();
     this.bg.setDepth(LOG_DEPTH);
+    this.bg.fillStyle(0x14142a, 0.88);
+    this.bg.fillRoundedRect(x, y, width, height, 6);
+    this.bg.lineStyle(1, 0x333366, 0.5);
+    this.bg.strokeRoundedRect(x, y, width, height, 6);
 
     this.textObj = scene.add.text(x + PADDING, y + PADDING, "", {
       fontSize: "12px",
@@ -51,7 +60,10 @@ export function formatEventForLog(
 ): string | null {
   const type = event.type as string;
 
-  const entity = (event.entity ?? event.character ?? event.attacker ?? event.healer) as string | undefined;
+  const entity = (event.entity ??
+    event.character ??
+    event.attacker ??
+    event.healer) as string | undefined;
   const target = event.target as string | undefined;
   const cls = entity ? resolveClass(entity) : "???";
   const tgt = target ? resolveClass(target) : undefined;
@@ -59,7 +71,10 @@ export function formatEventForLog(
   switch (type) {
     case "move":
     case "ability_movement": {
-      const to = (event.to ?? event.position) as [number, number] | { x: number; y: number } | undefined;
+      const to = (event.to ?? event.position) as
+        | [number, number]
+        | { x: number; y: number }
+        | undefined;
       if (to) {
         const [x, y] = Array.isArray(to) ? to : [to.x, to.y];
         return `${cls} moveu para (${x},${y})`;
@@ -100,14 +115,23 @@ export function formatEventForLog(
       return `${cls} morreu!`;
     case "effect_applied": {
       const tag = event.tag as string | undefined;
-      return `${cls} recebeu efeito: ${tag ?? "?"}`;
+      return `${tgt ?? cls} recebeu efeito: ${tag ?? "?"}`;
     }
     case "effect_expired": {
       const tag = event.tag as string | undefined;
       return `Efeito ${tag ?? "?"} expirou em ${cls}`;
     }
+    case "object_hit": {
+      const dmg = (event.damage ?? 0) as number;
+      const destroyed = event.destroyed as boolean | undefined;
+      const objId = event.object as string | undefined;
+      const label = objId?.replace(/_\d+$/, "") ?? "objeto";
+      if (destroyed) {
+        return `${cls} destruiu ${label} — ${dmg} dano`;
+      }
+      return `${cls} atingiu ${label} — ${dmg} dano`;
+    }
     default:
       return null;
   }
 }
-

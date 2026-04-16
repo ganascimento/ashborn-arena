@@ -80,3 +80,9 @@ Este arquivo mantem o estado atual do desenvolvimento de cada feature do projeto
 | 26  | Correcao custo PA de movimento   | concluida | 22     | [features/26_correcao_movimento_pa/](features/26_correcao_movimento_pa/)         |
 | 27  | Log de combate e ritmo da IA     | concluida | 22, 23 | [features/27_log_combate_ritmo_ia/](features/27_log_combate_ritmo_ia/)           |
 | 28  | Painel de detalhes do personagem | concluida | 23     | [features/28_painel_detalhes_aliado/](features/28_painel_detalhes_aliado/)       |
+
+### Polish e Mecanicas (engine/ + backend/ + frontend/)
+
+| #   | Feature                       | Status    | Dep.          | Spec                                                                               |
+| --- | ----------------------------- | --------- | ------------- | ---------------------------------------------------------------------------------- |
+| 29  | Visual, cenario e auto-battle | concluida | 10, 11, 21-28 | [features/29_visual_cenario_auto_battle/](features/29_visual_cenario_auto_battle/) |

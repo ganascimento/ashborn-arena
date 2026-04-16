@@ -12,6 +12,7 @@ class CharacterRequest(BaseModel):
 class BattleStartRequest(BaseModel):
     difficulty: str
     team: list[CharacterRequest]
+    auto_battle: bool = False
 
 
 class PositionOut(BaseModel):

@@ -11,6 +11,7 @@ class BattleSession:
     difficulty: str
     player_entity_ids: list[str]
     ai_entity_ids: list[str]
+    auto_battle: bool = False
 
 
 class SessionManager:
@@ -23,6 +24,7 @@ class SessionManager:
         difficulty: str,
         player_ids: list[str],
         ai_ids: list[str],
+        auto_battle: bool = False,
     ) -> BattleSession:
         session_id = str(uuid.uuid4())
         session = BattleSession(
@@ -31,6 +33,7 @@ class SessionManager:
             difficulty=difficulty,
             player_entity_ids=player_ids,
             ai_entity_ids=ai_ids,
+            auto_battle=auto_battle,
         )
         self._sessions[session_id] = session
         return session

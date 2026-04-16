@@ -18,7 +18,6 @@ class ObjectType(Enum):
     TREE = "tree"
     BUSH = "bush"
     ROCK = "rock"
-    PUDDLE = "puddle"
 
 
 @dataclass(frozen=True)
@@ -52,16 +51,9 @@ OBJECT_TEMPLATES: dict[ObjectType, ObjectTemplate] = {
         throwable=False,
     ),
     ObjectType.ROCK: ObjectTemplate(
-        max_hp=None,
+        max_hp=30,
         blocks_movement=True,
         blocks_los=True,
-        flammable=False,
-        throwable=False,
-    ),
-    ObjectType.PUDDLE: ObjectTemplate(
-        max_hp=None,
-        blocks_movement=False,
-        blocks_los=False,
         flammable=False,
         throwable=False,
     ),

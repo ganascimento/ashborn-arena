@@ -7,10 +7,19 @@ export interface CharacterStateEntry {
   status: "active" | "knocked_out" | "dead";
 }
 
+export interface MapObjectStateEntry {
+  data: {
+    hp: number | null;
+    max_hp: number | null;
+    position: { x: number; y: number };
+  };
+}
+
 export function updateStateFromEvent<T extends CharacterStateEntry>(
   event: Record<string, unknown>,
   characters: Map<string, T>,
   activeEffects: Map<string, Set<string>>,
+  mapObjects?: Map<string, MapObjectStateEntry>,
 ): void {
   const type = event.type as string | undefined;
   if (!type) return;
@@ -20,7 +29,10 @@ export function updateStateFromEvent<T extends CharacterStateEntry>(
     case "ability_movement": {
       const entityId = (event.entity ?? event.character) as string | undefined;
       if (!entityId) return;
-      const dest = (event.to ?? event.position) as [number, number] | { x: number; y: number } | undefined;
+      const dest = (event.to ?? event.position) as
+        | [number, number]
+        | { x: number; y: number }
+        | undefined;
       if (!dest) return;
       const [dx, dy] = Array.isArray(dest) ? dest : [dest.x, dest.y];
       const entry = characters.get(entityId);
@@ -59,7 +71,10 @@ export function updateStateFromEvent<T extends CharacterStateEntry>(
       const entry = characters.get(targetId);
       if (!entry) return;
       const wasKnockedOut = entry.status === "knocked_out";
-      entry.data.current_hp = Math.min(entry.data.current_hp + amount, entry.data.max_hp);
+      entry.data.current_hp = Math.min(
+        entry.data.current_hp + amount,
+        entry.data.max_hp,
+      );
       if (wasKnockedOut && entry.data.current_hp > 0) {
         entry.status = "active";
       }
@@ -72,7 +87,10 @@ export function updateStateFromEvent<T extends CharacterStateEntry>(
       if (amount === undefined) return;
       const entry = characters.get(entityId);
       if (!entry) return;
-      entry.data.current_hp = Math.min(entry.data.current_hp + amount, entry.data.max_hp);
+      entry.data.current_hp = Math.min(
+        entry.data.current_hp + amount,
+        entry.data.max_hp,
+      );
       break;
     }
     case "bleed":
@@ -105,6 +123,17 @@ export function updateStateFromEvent<T extends CharacterStateEntry>(
       if (entry) entry.status = "dead";
       break;
     }
+    case "object_hit": {
+      const objId = event.object as string | undefined;
+      if (!objId || !mapObjects) break;
+      const obj = mapObjects.get(objId);
+      if (!obj || obj.data.hp === null) break;
+      const damage = event.damage as number | undefined;
+      if (damage !== undefined) {
+        obj.data.hp = Math.max(0, obj.data.hp - damage);
+      }
+      break;
+    }
     case "object_destroyed": {
       break;
     }
@@ -112,7 +141,8 @@ export function updateStateFromEvent<T extends CharacterStateEntry>(
       const targetId = event.target as string | undefined;
       const tag = event.tag as string | undefined;
       if (targetId && tag) {
-        if (!activeEffects.has(targetId)) activeEffects.set(targetId, new Set());
+        if (!activeEffects.has(targetId))
+          activeEffects.set(targetId, new Set());
         activeEffects.get(targetId)!.add(tag);
       }
       break;

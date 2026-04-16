@@ -58,9 +58,12 @@ export class CharacterDetailPanel {
     const left = cx - PANEL_WIDTH / 2;
     const top = cy - panelHeight / 2;
 
-    const bg = this.scene.add.rectangle(cx, cy, PANEL_WIDTH, panelHeight, BG_COLOR);
-    bg.setStrokeStyle(2, borderColor);
+    const bg = this.scene.add.graphics();
     bg.setDepth(PANEL_DEPTH);
+    bg.fillStyle(BG_COLOR, 0.95);
+    bg.fillRoundedRect(left, top, PANEL_WIDTH, panelHeight, 8);
+    bg.lineStyle(2, borderColor, 0.8);
+    bg.strokeRoundedRect(left, top, PANEL_WIDTH, panelHeight, 8);
     this.objects.push(bg);
 
     let y = top + PAD;

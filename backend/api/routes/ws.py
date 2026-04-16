@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import random
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -23,7 +25,12 @@ from engine.systems.battle import (
     ACTION_PASS,
 )
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
+
+_AI_READY_TIMEOUT = 10
+_AI_MAX_RETRIES = 5
 
 _ACTION_TYPE_NAMES = {
     ACTION_MOVE: "move",
@@ -148,21 +155,51 @@ async def _handle_player_turn(ws: WebSocket, battle, agent: str, player_ids: set
             return
 
 
+def _get_ai_decision(
+    battle, agent: str, rng: random.Random, policies=None
+) -> tuple[int, int]:
+    if policies:
+        class_name = battle.get_character(agent).character_class.value
+        policy = policies.get(class_name)
+        if policy:
+            try:
+                return get_inference_action(battle, agent, policy)
+            except Exception:
+                logger.exception("Inference failed for %s, falling back to heuristic AI", agent)
+    return get_ai_action(battle, agent, rng)
+
+
 async def _handle_ai_turn(
     ws: WebSocket, battle, agent: str, rng: random.Random, policies=None
 ):
-    while not battle.is_over and battle.current_agent == agent:
-        if policies:
-            class_name = battle.get_character(agent).character_class.value
-            policy = policies.get(class_name)
-            if policy:
-                action_type, target_tile = get_inference_action(battle, agent, policy)
-            else:
-                action_type, target_tile = get_ai_action(battle, agent, rng)
-        else:
-            action_type, target_tile = get_ai_action(battle, agent, rng)
+    retries = 0
 
+    while not battle.is_over and battle.current_agent == agent:
+        action_type, target_tile = _get_ai_decision(
+            battle, agent, rng, policies
+        )
+
+        pa_before = battle.get_pa(agent)
         events = battle.execute_action(action_type, target_tile)
+
+        if (
+            not events
+            and battle.current_agent == agent
+            and battle.get_pa(agent) == pa_before
+            and action_type not in (ACTION_END_TURN, ACTION_PASS)
+        ):
+            retries += 1
+            logger.warning(
+                "AI action had no effect for %s (attempt %d/%d)",
+                agent, retries, _AI_MAX_RETRIES,
+            )
+            if retries >= _AI_MAX_RETRIES:
+                logger.warning("Forcing end_turn for %s after %d failed actions", agent, retries)
+                events = battle.execute_action(ACTION_END_TURN, 0)
+                await ws.send_json(make_ai_action(agent, "end_turn", events))
+                break
+            continue
+        retries = 0
 
         action_name = _ACTION_TYPE_NAMES.get(action_type, "end_turn")
         await ws.send_json(make_ai_action(agent, action_name, events))
@@ -174,7 +211,12 @@ async def _handle_ai_turn(
             break
 
         try:
-            await ws.receive_json()  # wait for ready
+            await asyncio.wait_for(ws.receive_json(), timeout=_AI_READY_TIMEOUT)
+        except asyncio.TimeoutError:
+            logger.warning("Timed out waiting for ready from client during %s turn, forcing end_turn", agent)
+            events = battle.execute_action(ACTION_END_TURN, 0)
+            await ws.send_json(make_ai_action(agent, "end_turn", events))
+            break
         except ValueError:
             pass
 
@@ -192,6 +234,7 @@ async def battle_websocket(websocket: WebSocket, session_id: str):
     await websocket.accept()
     battle = session.battle_state
     player_ids = set(session.player_entity_ids)
+    auto_battle = session.auto_battle
     rng = random.Random()
     policies = get_policies(session.difficulty)
 
@@ -201,7 +244,7 @@ async def battle_websocket(websocket: WebSocket, session_id: str):
             if agent is None or battle.is_over:
                 break
 
-            if agent in player_ids:
+            if agent in player_ids and not auto_battle:
                 await _handle_player_turn(websocket, battle, agent, player_ids)
             else:
                 await _handle_ai_turn(websocket, battle, agent, rng, policies)

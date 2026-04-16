@@ -30,7 +30,7 @@ from engine.systems.damage import (
 from engine.systems.effect_manager import EffectManager
 from engine.systems.elemental import check_elemental_combo, has_negative_status
 from engine.systems.initiative import determine_turn_order
-from engine.systems.line_of_sight import has_line_of_sight
+from engine.systems.line_of_sight import find_first_blocker
 from engine.systems.movement import execute_move, get_reachable_tiles, tiles_for_pa
 from engine.systems.opportunity import get_opportunity_attackers
 from engine.systems.turn_manager import TurnManager
@@ -526,31 +526,42 @@ class BattleState:
         if self._turn_manager.get_pa(agent) < ability.pa_cost:
             return
 
-        target_id = self._find_character_at(target_pos)
-        if target_id is None:
-            return
-
         agent_pos = self._positions[agent]
         dist = max(abs(target_pos.x - agent_pos.x), abs(target_pos.y - agent_pos.y))
         if dist > ability.max_range:
             return
-        if ability.max_range > 1 and not has_line_of_sight(
-            agent_pos, target_pos, self.get_blocking_positions()
-        ):
+
+        if ability.max_range > 1:
+            blocker_pos = find_first_blocker(
+                agent_pos, target_pos, self.get_blocking_positions()
+            )
+            if blocker_pos:
+                obj = self._find_object_at(blocker_pos)
+                if obj:
+                    self._turn_manager.spend_pa(agent, ability.pa_cost)
+                    self._apply_ability_damage_to_object(agent, ability, obj)
+                return
+
+        target_id = self._find_character_at(target_pos)
+        if target_id is not None:
+            self._turn_manager.spend_pa(agent, ability.pa_cost)
+            result = self._resolve_damage(agent, target_id, ability)
+            self._events.append(
+                {
+                    "type": "basic_attack",
+                    "attacker": agent,
+                    "target": target_id,
+                    "damage": result.get("damage", 0),
+                    "crit": result.get("crit", False),
+                    "evaded": result.get("evaded", False),
+                }
+            )
             return
 
-        self._turn_manager.spend_pa(agent, ability.pa_cost)
-        result = self._resolve_damage(agent, target_id, ability)
-        self._events.append(
-            {
-                "type": "basic_attack",
-                "attacker": agent,
-                "target": target_id,
-                "damage": result.get("damage", 0),
-                "crit": result.get("crit", False),
-                "evaded": result.get("evaded", False),
-            }
-        )
+        obj = self._find_object_at(target_pos)
+        if obj is not None:
+            self._turn_manager.spend_pa(agent, ability.pa_cost)
+            self._apply_ability_damage_to_object(agent, ability, obj)
 
     def _execute_ability(self, agent: str, slot: int, target_pos: Position) -> None:
         abilities = self._equipped.get(agent, [])
@@ -568,6 +579,41 @@ class BattleState:
             self._turn_manager.use_ability(agent, slot, ability.cooldown)
 
         char = self._characters[agent]
+        agent_pos = self._positions[agent]
+
+        if ability.damage_base > 0 and ability.max_range > 1 and not ability.delayed:
+            blocker_pos = find_first_blocker(
+                agent_pos, target_pos, self.get_blocking_positions()
+            )
+            if blocker_pos:
+                obj = self._find_object_at(blocker_pos)
+                if obj:
+                    self._apply_ability_damage_to_object(agent, ability, obj)
+                if ability.movement_type == "charge" and ability.movement_distance > 0:
+                    if obj and obj.is_destroyed:
+                        new_pos = blocker_pos
+                    else:
+                        new_pos = self._find_adjacent_free(
+                            agent_pos, blocker_pos, ability.movement_distance
+                        )
+                    if new_pos and new_pos != agent_pos:
+                        team = self._teams[agent]
+                        self.grid.remove_occupant(agent_pos, agent)
+                        self.grid.place_occupant(
+                            new_pos,
+                            Occupant(agent, OccupantType.CHARACTER, team),
+                        )
+                        self._positions[agent] = new_pos
+                        self._events.append(
+                            {
+                                "type": "ability_movement",
+                                "entity": agent,
+                                "from": agent_pos,
+                                "to": new_pos,
+                                "movement": ability.movement_type,
+                            }
+                        )
+                return
 
         if ability.damage_base > 0 and ability.delayed:
             self._delayed_abilities.append(
@@ -618,6 +664,10 @@ class BattleState:
                                     "heal": heal_amount,
                                 }
                             )
+                else:
+                    obj = self._find_object_at(target_pos)
+                    if obj:
+                        self._apply_ability_damage_to_object(agent, ability, obj)
 
         if ability.heal_base > 0:
             target_id = self._find_character_at(target_pos)
@@ -1191,3 +1241,34 @@ class BattleState:
             if p == pos and self._characters[eid].state != CharacterState.DEAD:
                 return eid
         return None
+
+    def _find_object_at(self, pos: Position) -> MapObject | None:
+        for obj in self._map_objects.values():
+            if not obj.is_destroyed and obj.position == pos:
+                return obj
+        return None
+
+    def _apply_ability_damage_to_object(
+        self, attacker_id: str, ability: Ability, obj: MapObject
+    ) -> int:
+        char = self._characters[attacker_id]
+        attr_name = _get_scaling_attr(ability, char.character_class)
+        modifier = char.attributes.modifier(attr_name)
+        raw_damage = calculate_raw_damage(
+            ability.damage_base, modifier, ability.damage_scaling
+        )
+        destroyed = obj.apply_damage(raw_damage)
+        if destroyed:
+            self.grid.remove_occupant(obj.position, obj.entity_id)
+        self._events.append(
+            {
+                "type": "object_hit",
+                "ability": ability.id,
+                "attacker": attacker_id,
+                "object": obj.entity_id,
+                "position": obj.position,
+                "damage": raw_damage,
+                "destroyed": destroyed,
+            }
+        )
+        return raw_damage

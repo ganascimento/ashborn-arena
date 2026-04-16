@@ -1,15 +1,25 @@
 import Phaser from "phaser";
 
 interface CharacterEntry {
-  data: { team: string; position: { x: number; y: number }; current_hp: number; max_hp: number };
+  data: {
+    team: string;
+    position: { x: number; y: number };
+    current_hp: number;
+    max_hp: number;
+  };
   sprite: Phaser.GameObjects.Container;
   circle: Phaser.GameObjects.Arc;
   status: "active" | "knocked_out" | "dead";
 }
 
 interface MapObjectEntry {
-  data: { position: { x: number; y: number } };
-  sprite: Phaser.GameObjects.Rectangle;
+  data: {
+    position: { x: number; y: number };
+    hp: number | null;
+    max_hp: number | null;
+  };
+  sprite: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image;
+  canopy?: Phaser.GameObjects.Image;
 }
 
 const MOVE_TYPES = new Set(["move", "ability_movement"]);
@@ -40,7 +50,9 @@ export class BattleAnimations {
     this.scene = scene;
   }
 
-  private tweenPromise(config: Phaser.Types.Tweens.TweenBuilderConfig): Promise<void> {
+  private tweenPromise(
+    config: Phaser.Types.Tweens.TweenBuilderConfig,
+  ): Promise<void> {
     return new Promise((resolve) => {
       this.scene.tweens.add({
         ...config,
@@ -55,7 +67,11 @@ export class BattleAnimations {
     });
   }
 
-  async animateMove(container: Phaser.GameObjects.Container, toPx: number, toPy: number): Promise<void> {
+  async animateMove(
+    container: Phaser.GameObjects.Container,
+    toPx: number,
+    toPy: number,
+  ): Promise<void> {
     await this.tweenPromise({
       targets: container,
       x: toPx,
@@ -65,25 +81,36 @@ export class BattleAnimations {
     });
   }
 
-  async animateDamage(circle: Phaser.GameObjects.Arc, originalColor: number): Promise<void> {
+  async animateDamage(
+    circle: Phaser.GameObjects.Arc,
+    originalColor: number,
+  ): Promise<void> {
     circle.setFillStyle(0xff4444);
     await this.delay(200);
     circle.setFillStyle(originalColor);
   }
 
-  async animateHeal(circle: Phaser.GameObjects.Arc, originalColor: number): Promise<void> {
+  async animateHeal(
+    circle: Phaser.GameObjects.Arc,
+    originalColor: number,
+  ): Promise<void> {
     circle.setFillStyle(0x44ff44);
     await this.delay(200);
     circle.setFillStyle(originalColor);
   }
 
-  async animateDot(circle: Phaser.GameObjects.Arc, originalColor: number): Promise<void> {
+  async animateDot(
+    circle: Phaser.GameObjects.Arc,
+    originalColor: number,
+  ): Promise<void> {
     circle.setFillStyle(0xcc4444);
     await this.delay(150);
     circle.setFillStyle(originalColor);
   }
 
-  async animateKnockout(container: Phaser.GameObjects.Container): Promise<void> {
+  async animateKnockout(
+    container: Phaser.GameObjects.Container,
+  ): Promise<void> {
     await this.tweenPromise({
       targets: container,
       alpha: 0.4,
@@ -108,13 +135,33 @@ export class BattleAnimations {
     container.destroy();
   }
 
-  async animateObjectDestroy(rect: Phaser.GameObjects.Rectangle): Promise<void> {
+  async animateObjectHit(
+    sprite: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image,
+  ): Promise<void> {
+    if (sprite instanceof Phaser.GameObjects.Image) {
+      sprite.setTint(0xff4444);
+      await this.delay(200);
+      sprite.clearTint();
+    } else {
+      const orig = sprite.fillColor;
+      sprite.setFillStyle(0xff4444);
+      await this.delay(200);
+      sprite.setFillStyle(orig);
+    }
+  }
+
+  async animateObjectDestroy(
+    sprite: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image,
+    canopy?: Phaser.GameObjects.Image,
+  ): Promise<void> {
+    const targets = canopy ? [sprite, canopy] : sprite;
     await this.tweenPromise({
-      targets: rect,
+      targets,
       alpha: 0,
       duration: 200,
     });
-    rect.destroy();
+    sprite.destroy();
+    canopy?.destroy();
   }
 
   async processEventsAnimated(
@@ -123,7 +170,13 @@ export class BattleAnimations {
     getMapObject: (id: string) => MapObjectEntry | undefined,
     gridToPixel: (x: number, y: number) => { px: number; py: number },
     updateState: (event: Record<string, unknown>) => void,
-    onFloatingText?: (worldX: number, worldY: number, text: string, color: string, fontSize: string) => void,
+    onFloatingText?: (
+      worldX: number,
+      worldY: number,
+      text: string,
+      color: string,
+      fontSize: string,
+    ) => void,
   ): Promise<void> {
     if (!events || events.length === 0) return;
 
@@ -135,7 +188,9 @@ export class BattleAnimations {
       updateState(event);
 
       if (MOVE_TYPES.has(type)) {
-        const entityId = (event.entity ?? event.character) as string | undefined;
+        const entityId = (event.entity ?? event.character) as
+          | string
+          | undefined;
         if (!entityId) continue;
         const entry = getCharacter(entityId);
         if (!entry) continue;
@@ -162,9 +217,21 @@ export class BattleAnimations {
           if (amount !== undefined) {
             const isCrit = event.crit === true;
             if (isCrit) {
-              onFloatingText(entry.sprite.x, entry.sprite.y, `-${amount}!`, "#ffd700", "20px");
+              onFloatingText(
+                entry.sprite.x,
+                entry.sprite.y,
+                `-${amount}!`,
+                "#ffd700",
+                "20px",
+              );
             } else {
-              onFloatingText(entry.sprite.x, entry.sprite.y, `-${amount}`, "#ff4444", "16px");
+              onFloatingText(
+                entry.sprite.x,
+                entry.sprite.y,
+                `-${amount}`,
+                "#ff4444",
+                "16px",
+              );
             }
           }
         }
@@ -182,7 +249,13 @@ export class BattleAnimations {
         if (onFloatingText) {
           const amount = (event.amount ?? event.heal) as number | undefined;
           if (amount !== undefined) {
-            onFloatingText(entry.sprite.x, entry.sprite.y, `+${amount}`, "#44ff44", "16px");
+            onFloatingText(
+              entry.sprite.x,
+              entry.sprite.y,
+              `+${amount}`,
+              "#44ff44",
+              "16px",
+            );
           }
         }
       } else if (DOT_TYPES.has(type)) {
@@ -196,7 +269,13 @@ export class BattleAnimations {
         if (onFloatingText) {
           const amount = (event.damage ?? event.amount) as number | undefined;
           if (amount !== undefined) {
-            onFloatingText(entry.sprite.x, entry.sprite.y, `-${amount}`, "#ff4444", "14px");
+            onFloatingText(
+              entry.sprite.x,
+              entry.sprite.y,
+              `-${amount}`,
+              "#ff4444",
+              "14px",
+            );
           }
         }
       } else if (HOT_TYPES.has(type)) {
@@ -210,7 +289,13 @@ export class BattleAnimations {
         if (onFloatingText) {
           const amount = (event.heal ?? event.amount) as number | undefined;
           if (amount !== undefined) {
-            onFloatingText(entry.sprite.x, entry.sprite.y, `+${amount}`, "#44ff44", "14px");
+            onFloatingText(
+              entry.sprite.x,
+              entry.sprite.y,
+              `+${amount}`,
+              "#44ff44",
+              "14px",
+            );
           }
         }
       } else if (type === "knocked_out") {
@@ -227,13 +312,41 @@ export class BattleAnimations {
         if (!entry) continue;
 
         await this.animateDeath(entry.sprite);
+      } else if (type === "object_hit") {
+        const objId = event.object as string | undefined;
+        if (!objId) continue;
+        const entry = getMapObject(objId);
+        if (!entry) continue;
+
+        const pos = event.position as { x: number; y: number } | undefined;
+        const pixelPos = pos ? gridToPixel(pos.x, pos.y) : null;
+
+        await this.animateObjectHit(entry.sprite);
+
+        if (onFloatingText && pixelPos) {
+          const damage = event.damage as number | undefined;
+          if (damage !== undefined) {
+            onFloatingText(
+              pixelPos.px,
+              pixelPos.py,
+              `-${damage}`,
+              "#ff8844",
+              "14px",
+            );
+          }
+        }
+
+        const destroyed = event.destroyed as boolean | undefined;
+        if (destroyed) {
+          await this.animateObjectDestroy(entry.sprite, entry.canopy);
+        }
       } else if (type === "object_destroyed") {
         const objId = (event.entity ?? event.object) as string | undefined;
         if (!objId) continue;
         const entry = getMapObject(objId);
         if (!entry) continue;
 
-        await this.animateObjectDestroy(entry.sprite);
+        await this.animateObjectDestroy(entry.sprite, entry.canopy);
       }
       // All other event types: no animation, continue immediately
     }
