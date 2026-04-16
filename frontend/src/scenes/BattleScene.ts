@@ -196,7 +196,9 @@ export default class BattleScene extends Phaser.Scene {
       GRID_ROWS,
     );
     this.activeMarker = new BattleActiveMarker(this);
-    this.combatLog = new BattleCombatLog(this, 700, 500, 548, 210);
+    const logY = this.autoBattle ? 100 : 500;
+    const logH = this.autoBattle ? 610 : 210;
+    this.combatLog = new BattleCombatLog(this, 700, logY, 548, logH);
     this.detailPanel = new CharacterDetailPanel(this);
 
     for (const [id, entry] of this.characters) {
