@@ -16,8 +16,11 @@ from training.environment.rewards import REWARD_DEFEAT, REWARD_VICTORY
 
 
 def _save_meta(directory: str, episodes: int, updates: int) -> None:
-    path = Path(directory) / "meta.json"
-    path.write_text(json.dumps({"episodes": episodes, "updates": updates}))
+    path = Path(directory)
+    path.mkdir(parents=True, exist_ok=True)
+    (path / "meta.json").write_text(
+        json.dumps({"episodes": episodes, "updates": updates})
+    )
 
 
 def _load_meta(directory: str) -> dict:
@@ -25,6 +28,10 @@ def _load_meta(directory: str) -> dict:
     if path.exists():
         return json.loads(path.read_text())
     return {"episodes": 0, "updates": 0}
+
+
+def _resume_dir(phase: PhaseConfig) -> str:
+    return phase.checkpoint_dir or f"models/_phase_{phase.phase_number}"
 
 
 class Trainer:
@@ -144,16 +151,33 @@ class Trainer:
         }
 
     def train_phase(self, phase: PhaseConfig, pool: SelfPlayPool) -> dict:
+        resume_dir = _resume_dir(phase)
         episode_offset = 0
         update_offset = 0
-        if phase.load_from:
+        resumed = False
+
+        if (Path(resume_dir) / "meta.json").exists():
             try:
-                self._agent.load(phase.load_from)
-                meta = _load_meta(phase.load_from)
-                episode_offset = meta["episodes"]
-                update_offset = meta["updates"]
+                self._agent.load(resume_dir)
+                meta = _load_meta(resume_dir)
+                episode_offset = meta.get("episodes", 0)
+                update_offset = meta.get("updates", 0)
+                resumed = True
             except FileNotFoundError:
                 pass
+
+        if not resumed and phase.load_from:
+            try:
+                self._agent.load(phase.load_from)
+            except FileNotFoundError:
+                pass
+
+        if episode_offset >= phase.episodes:
+            print(
+                f"\nPhase {phase.phase_number} already complete "
+                f"({episode_offset}/{phase.episodes} episodes). Skipping."
+            )
+            return {"episodes_completed": 0, "wins": {}}
 
         self.logger.start_phase(
             phase.phase_number,
@@ -167,7 +191,7 @@ class Trainer:
         total_episodes = 0
         total_wins = {"team_a": 0, "team_b": 0, "draw": 0}
 
-        for ep in range(phase.episodes):
+        for ep in range(episode_offset, phase.episodes):
             team_size = self._rng.choice(phase.team_sizes)
             env = ArenaEnv(team_size=team_size)
 
@@ -189,17 +213,30 @@ class Trainer:
 
             if (ep + 1) % phase.pool_interval == 0:
                 pool.add_snapshot(self._agent)
+                self._agent.save(resume_dir)
+                _save_meta(
+                    resume_dir,
+                    episodes=ep + 1,
+                    updates=self.logger._update_count,
+                )
 
         if buffer._data and any(buffer.size(aid) > 0 for aid in buffer._data):
             result = self._agent.update(buffer)
             self.logger.log_update(result)
             buffer.clear()
 
-        if phase.checkpoint_dir:
+        self._agent.save(resume_dir)
+        _save_meta(
+            resume_dir,
+            episodes=phase.episodes,
+            updates=self.logger._update_count,
+        )
+
+        if phase.checkpoint_dir and phase.checkpoint_dir != resume_dir:
             self._agent.save(phase.checkpoint_dir)
             _save_meta(
                 phase.checkpoint_dir,
-                episodes=episode_offset + total_episodes,
+                episodes=phase.episodes,
                 updates=self.logger._update_count,
             )
 
