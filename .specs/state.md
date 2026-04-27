@@ -93,3 +93,4 @@ Este arquivo mantem o estado atual do desenvolvimento de cada feature do projeto
 | #   | Feature                                       | Status    | Dep. | Spec                                                                                       |
 | --- | --------------------------------------------- | --------- | ---- | ------------------------------------------------------------------------------------------ |
 | 31  | MAPPO — critic centralizado, reward por % HP, annealing e eval loop | concluida | 14-16 | [features/31_mappo_critic_centralizado_eval/](features/31_mappo_critic_centralizado_eval/) |
+| 32  | Visualizacao de treino com TensorBoard        | concluida | 16    | [features/32_visualizacao_treino_tensorboard/](features/32_visualizacao_treino_tensorboard/) |

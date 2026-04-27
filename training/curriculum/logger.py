@@ -5,9 +5,11 @@ import time
 from collections import deque
 from pathlib import Path
 
+from torch.utils.tensorboard import SummaryWriter
+
 
 class TrainingLogger:
-    def __init__(self, log_dir: str = "logs") -> None:
+    def __init__(self, log_dir: str = "logs", enable_tensorboard: bool = True) -> None:
         self._log_dir = Path(log_dir)
         self._log_dir.mkdir(parents=True, exist_ok=True)
         self._log_file = self._log_dir / "training.jsonl"
@@ -23,6 +25,10 @@ class TrainingLogger:
 
         self._phase_rewards: list[float] = []
         self._phase_steps: list[int] = []
+
+        self._writer: SummaryWriter | None = None
+        if enable_tensorboard:
+            self._writer = SummaryWriter(log_dir=str(self._log_dir / "tb"))
 
     def start_training(self) -> None:
         self._global_start = time.time()
@@ -110,6 +116,20 @@ class TrainingLogger:
             f"({elapsed:.0f}s)"
         )
 
+        if self._writer is not None:
+            step = self._episode_count
+            self._writer.add_scalar("loss/policy", ploss, step)
+            self._writer.add_scalar("loss/value", vloss, step)
+            self._writer.add_scalar("policy/entropy", ent, step)
+            self._writer.add_scalar(
+                "policy/entropy_coeff",
+                update_result.get("entropy_coeff", 0.0),
+                step,
+            )
+            self._writer.add_scalar("train/avg_reward_50", avg_reward, step)
+            self._writer.add_scalar("train/avg_steps_50", avg_steps, step)
+            self._writer.add_scalar("train/win_rate_50", win_a / max(n, 1), step)
+
     def log_eval(self, eval_result: dict) -> None:
         record = {
             "phase": self._current_phase,
@@ -128,6 +148,19 @@ class TrainingLogger:
             f"win_rate={wr:.2%} (n={n}, team_size={ts})"
         )
 
+        if self._writer is not None:
+            step = self._episode_count
+            self._writer.add_scalar("eval/win_rate", wr, step)
+            self._writer.add_scalar(
+                "eval/loss_rate", eval_result.get("loss_rate", 0.0), step
+            )
+            self._writer.add_scalar(
+                "eval/draw_rate", eval_result.get("draw_rate", 0.0), step
+            )
+            self._writer.add_scalar(
+                "eval/avg_steps", eval_result.get("avg_steps", 0.0), step
+            )
+
     def end_phase(self, checkpoint_dir: str | None = None) -> None:
         elapsed = time.time() - self._phase_start
         n = len(self._phase_rewards)
@@ -145,3 +178,5 @@ class TrainingLogger:
             f"\nTraining complete: {self._episode_count} episodes, {self._update_count} updates, {total:.0f}s"
         )
         print(f"Log: {self._log_file}")
+        if self._writer is not None:
+            self._writer.close()

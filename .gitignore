@@ -8,4 +8,7 @@ node_modules/
 .env
 
 models/_phase_*/
+logs/scratch/
 logs/training.jsonl
+logs/training_full.log
+logs/tb/

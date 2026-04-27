@@ -262,6 +262,53 @@ models/
 
 5 `.pt` files per difficulty level (one per class), **15 files total**.
 
+### <img src="https://em-content.zobj.net/source/apple/391/chart-increasing_1f4c8.png" width="16" /> Visualizing training
+
+The `TrainingLogger` writes metrics to two parallel channels:
+
+| Channel | Path | Format |
+|---|---|---|
+| <img src="https://em-content.zobj.net/source/apple/391/page-facing-up_1f4c4.png" width="14" /> Structured log (source of truth) | `<log-dir>/training.jsonl` | JSON-Lines, diff-friendly |
+| <img src="https://em-content.zobj.net/source/apple/391/bar-chart_1f4ca.png" width="14" /> TensorBoard event files | `<log-dir>/tb/events.out.tfevents.*` | Binary, for visualization |
+
+**Folder convention:**
+
+| Path | Status | Use case |
+|---|---|---|
+| `logs/runs/<descriptive-name>/` | Versioned in git | Milestone runs (worth comparing later) |
+| `logs/scratch/<id>/` | Ignored by git | Smoke tests, throwaway experiments |
+
+**Example — milestone run:**
+
+```bash
+python -m training.train --log-dir logs/runs/2026-04-28_baseline
+```
+
+**Example — throwaway experiment:**
+
+```bash
+python -m training.train --log-dir logs/scratch/$(date +%s)
+```
+
+**View dashboards (compares all milestone runs side-by-side):**
+
+```bash
+tensorboard --logdir logs/runs/
+```
+
+Open [http://localhost:6006](http://localhost:6006) in the browser.
+
+**Available metrics:**
+
+| Group | Tag | Source |
+|---|---|---|
+| Loss | `loss/policy`, `loss/value` | per update |
+| Policy | `policy/entropy`, `policy/entropy_coeff` | per update |
+| Train | `train/avg_reward_50`, `train/avg_steps_50`, `train/win_rate_50` | per update (50-ep window) |
+| Eval | `eval/win_rate`, `eval/loss_rate`, `eval/draw_rate`, `eval/avg_steps` | every `eval_interval` episodes |
+
+All metrics use `episode` as the X axis, allowing direct alignment between training and eval curves.
+
 ---
 
 ## <img src="https://em-content.zobj.net/source/apple/391/test-tube_1f9ea.png" width="20" /> Testing

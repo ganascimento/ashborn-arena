@@ -113,6 +113,18 @@ Apos cada episodio, agentes que nao receberam `done=True` durante o loop tem: (1
 
 Em ambiente AEC (1 agente por step), eventos que afetam outros agentes (ALLY_DEAD, KILL) geram rewards que sao acumulados em `pending_rewards` e somados ao reward do agente no seu proximo turno.
 
+### TensorBoard nao e dep transitiva do torch
+
+Feature 32 assumiu que `tensorboard` viria como dep transitiva via `torch.utils.tensorboard`. Falso — o import funciona mas o package `tensorboard` precisa ser instalado separadamente. Adicionado via `pip install tensorboard` na maquina de dev. Considerar declarar explicitamente em `pyproject.toml` se uma feature futura padronizar deps.
+
+### TrainingLogger — TB scalars usam episode_count como step
+
+`log_update` e `log_eval` gravam scalars no SummaryWriter usando `self._episode_count` como step (nao `self._update_count`). Isso permite alinhar curvas de update e eval no mesmo eixo X (episodios). Tags adotadas: `loss/policy`, `loss/value`, `policy/entropy`, `policy/entropy_coeff`, `train/avg_reward_50`, `train/avg_steps_50`, `train/win_rate_50`, `eval/win_rate`, `eval/loss_rate`, `eval/draw_rate`, `eval/avg_steps`.
+
+### TrainingLogger — flag enable_tensorboard
+
+`TrainingLogger(enable_tensorboard=False)` desativa o canal TB (testes unitarios que constroem logger em tmpdir podem optar por nao criar event files). Default e `True` — quem usa o logger via `Trainer.__init__` ganha TB de graca sem precisar saber dele.
+
 ---
 
 ## Resolvidos
