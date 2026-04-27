@@ -86,3 +86,4 @@ Este arquivo mantem o estado atual do desenvolvimento de cada feature do projeto
 | #   | Feature                       | Status    | Dep.          | Spec                                                                               |
 | --- | ----------------------------- | --------- | ------------- | ---------------------------------------------------------------------------------- |
 | 29  | Visual, cenario e auto-battle | concluida | 10, 11, 21-28 | [features/29_visual_cenario_auto_battle/](features/29_visual_cenario_auto_battle/) |
+| 30  | Cenario noturno compartilhado | concluida | 20, 29        | [features/30_cenario_noturno_compartilhado/](features/30_cenario_noturno_compartilhado/) |

@@ -13,7 +13,11 @@ import {
   validateAbilitySelection,
   validateTeam,
 } from "../network/validation";
-import { drawPanel } from "./ui-utils";
+import {
+  createForestParticles,
+  createNightLandscape,
+  drawPanel,
+} from "./ui-utils";
 
 const CLASS_DISPLAY: Record<string, string> = {
   warrior: "Guerreiro",
@@ -35,6 +39,12 @@ const ATTR_LABELS: Record<string, string> = {
 
 const LEFT_PANEL_WIDTH = 250;
 const FONT = "monospace";
+
+const DIFFICULTY_DISPLAY: Record<string, { label: string; color: string }> = {
+  easy: { label: "Facil", color: "#44ff44" },
+  normal: { label: "Normal", color: "#ffd700" },
+  hard: { label: "Dificil", color: "#ff4444" },
+};
 
 interface TeamMember {
   classId: string;
@@ -74,6 +84,10 @@ export default class PreparationScene extends Phaser.Scene {
     this.buildPanelObjects = [];
     this.teamListObjects = [];
 
+    const { width, height } = this.scale;
+    createNightLandscape(this, width, height);
+    createForestParticles(this, width, height);
+
     const loadingText = this.add
       .text(640, 360, "Carregando...", {
         fontSize: "28px",
@@ -111,6 +125,7 @@ export default class PreparationScene extends Phaser.Scene {
     });
 
     this.renderBackButton();
+    this.renderDifficultyLabel();
     this.renderClassPanel();
     this.renderTeamList();
     this.renderAutoBattleToggle();
@@ -130,6 +145,19 @@ export default class PreparationScene extends Phaser.Scene {
     btn.on("pointerover", () => btn.setColor("#bbbbdd"));
     btn.on("pointerout", () => btn.setColor("#7777aa"));
     btn.on("pointerdown", () => this.scene.start("MenuScene"));
+  }
+
+  private renderDifficultyLabel() {
+    const info =
+      DIFFICULTY_DISPLAY[this.difficulty] ?? DIFFICULTY_DISPLAY.normal;
+
+    this.add
+      .text(1260, 22, `Dificuldade: ${info.label}`, {
+        fontSize: "16px",
+        color: info.color,
+        fontFamily: FONT,
+      })
+      .setOrigin(1, 0);
   }
 
   private renderClassPanel() {

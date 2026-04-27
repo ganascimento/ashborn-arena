@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { loadDifficulty, saveDifficulty } from "../network/storage";
-import { createParticleTexture } from "./ui-utils";
+import { createForestParticles, createNightLandscape } from "./ui-utils";
 
 const DIFFICULTIES = [
   { label: "Facil", value: "easy" },
@@ -18,8 +18,8 @@ export default class MenuScene extends Phaser.Scene {
     const saved = loadDifficulty();
     const activeIndex = DIFFICULTIES.findIndex((d) => d.value === saved);
 
-    this.createBackground(width, height);
-    this.createParticles(width, height);
+    createNightLandscape(this, width, height);
+    createForestParticles(this, width, height);
 
     this.add
       .text(width / 2, height * 0.18, "ASHBORN ARENA", {
@@ -85,40 +85,6 @@ export default class MenuScene extends Phaser.Scene {
         fontFamily: "monospace",
       })
       .setOrigin(0.5);
-  }
-
-  private createBackground(width: number, height: number) {
-    const gfx = this.add.graphics();
-    gfx.setDepth(-2);
-
-    const steps = 10;
-    for (let i = 0; i < steps; i++) {
-      const alpha = 0.025 * (1 - i / steps);
-      gfx.fillStyle(0x000000, alpha);
-      gfx.fillRect(0, i * 14, width, 14);
-      gfx.fillRect(0, height - (i + 1) * 14, width, 14);
-      gfx.fillRect(i * 14, 0, 14, height);
-      gfx.fillRect(width - (i + 1) * 14, 0, 14, height);
-    }
-
-    gfx.fillStyle(0x2244aa, 0.03);
-    gfx.fillEllipse(width / 2, height * 0.35, width * 0.5, height * 0.5);
-  }
-
-  private createParticles(width: number, height: number) {
-    createParticleTexture(this, "menu_particle", 3, 0xffd700);
-
-    this.add.particles(0, 0, "menu_particle", {
-      x: { min: 0, max: width },
-      y: height + 10,
-      alpha: { start: 0.3, end: 0 },
-      scale: { min: 0.1, max: 0.4 },
-      speed: { min: 10, max: 25 },
-      angle: { min: 265, max: 275 },
-      lifespan: { min: 5000, max: 9000 },
-      frequency: 400,
-      blendMode: "ADD",
-    });
   }
 
   private createDifficultyButton(
