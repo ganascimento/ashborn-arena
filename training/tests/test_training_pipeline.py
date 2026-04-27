@@ -106,6 +106,26 @@ class TestTrainer:
         stats = trainer.train_phase(phase, pool)
         assert "episodes_completed" in stats
 
+    def test_collect_rollout_uses_pool_opponent_as_frozen_side(self):
+        agent = MAPPOAgent(obs_size=OBS_SIZE)
+        trainer = Trainer(agent, seed=42)
+        pool = SelfPlayPool(max_size=3)
+        pool.add_snapshot(agent)
+        opponent = trainer._sample_opponent_agent(pool)
+        buf = RolloutBuffer()
+
+        from training.environment.arena_env import ArenaEnv
+
+        trainer.collect_rollout(
+            ArenaEnv(team_size=1),
+            buf,
+            opponent_agent=opponent,
+            opponent_team="team_b",
+        )
+
+        assert opponent is not None
+        assert all("team_b" not in aid for aid in buf._data)
+
     def test_checkpoint_saved(self):
         agent = MAPPOAgent(obs_size=OBS_SIZE)
         trainer = Trainer(agent, seed=42)

@@ -14,7 +14,6 @@ from training.curriculum.phases import PhaseConfig
 from training.curriculum.self_play import SelfPlayPool
 from training.environment.arena_env import ArenaEnv
 from training.environment.observations import encode_global_state
-from training.environment.rewards import REWARD_DEFEAT, REWARD_VICTORY
 
 
 def _save_meta(directory: str, episodes: int, updates: int) -> None:
@@ -60,7 +59,26 @@ class Trainer:
         self._entropy_final = entropy_final
         self.logger = TrainingLogger(log_dir=log_dir)
 
-    def collect_rollout(self, env: ArenaEnv, buffer: RolloutBuffer) -> dict:
+    def _sample_opponent_agent(self, pool: SelfPlayPool) -> MAPPOAgent | None:
+        if pool.size == 0:
+            return None
+
+        opponent = MAPPOAgent(
+            obs_size=self._agent._obs_size,
+            global_state_size=self._agent._global_state_size,
+            num_action_types=self._agent._num_action_types,
+            num_targets=self._agent._num_targets,
+        )
+        pool.load_into(opponent, pool.sample_opponent())
+        return opponent
+
+    def collect_rollout(
+        self,
+        env: ArenaEnv,
+        buffer: RolloutBuffer,
+        opponent_agent: MAPPOAgent | None = None,
+        opponent_team: str = "team_b",
+    ) -> dict:
         seed = self._rng.randint(0, 2**31)
         env.reset(seed=seed)
 
@@ -88,11 +106,20 @@ class Trainer:
             char = env._battle.get_character(agent_id)
             class_name = char.character_class.value
 
-            accumulated = pending_rewards.get(agent_id, 0.0)
-            pending_rewards[agent_id] = 0.0
+            team = env._agent_teams.get(agent_id, "")
+            acting_agent = (
+                opponent_agent
+                if team == opponent_team and opponent_agent is not None
+                else self._agent
+            )
+            should_train = acting_agent is self._agent
+
+            accumulated = pending_rewards.get(agent_id, 0.0) if should_train else 0.0
+            if should_train:
+                pending_rewards[agent_id] = 0.0
 
             action, log_prob, entropy, used_target_mask = (
-                self._agent.select_action_hierarchical(
+                acting_agent.select_action_hierarchical(
                     class_name,
                     obs,
                     type_mask,
@@ -101,7 +128,7 @@ class Trainer:
             )
 
             global_state = encode_global_state(env._battle)
-            value = self._agent.get_value(global_state)
+            value = self._agent.get_value(global_state) if should_train else 0.0
 
             env.step(np.array([action[0], action[1]]))
 
@@ -117,21 +144,22 @@ class Trainer:
                             pending_rewards.get(other_id, 0.0) + other_r
                         )
 
-            buffer.add(
-                agent_id=agent_id,
-                obs=obs,
-                action=action,
-                log_prob=log_prob,
-                reward=reward,
-                value=value,
-                done=done,
-                type_mask=type_mask,
-                target_mask=used_target_mask,
-                global_state=global_state,
-                class_name=class_name,
-            )
+            if should_train:
+                buffer.add(
+                    agent_id=agent_id,
+                    obs=obs,
+                    action=action,
+                    log_prob=log_prob,
+                    reward=reward,
+                    value=value,
+                    done=done,
+                    type_mask=type_mask,
+                    target_mask=used_target_mask,
+                    global_state=global_state,
+                    class_name=class_name,
+                )
 
-            if done:
+            if done and should_train:
                 agents_with_done.add(agent_id)
 
             total_reward[agent_id] = total_reward.get(agent_id, 0.0) + reward
@@ -149,13 +177,6 @@ class Trainer:
                 continue
 
             terminal_reward = pending_rewards.get(agent_id, 0.0)
-            team = "team_a" if "team_a" in agent_id else "team_b"
-            if winner:
-                if team == winner:
-                    terminal_reward += REWARD_VICTORY
-                else:
-                    terminal_reward += REWARD_DEFEAT
-
             d = buffer._data[agent_id]
             if d["rewards"]:
                 d["rewards"][-1] += terminal_reward
@@ -306,7 +327,14 @@ class Trainer:
             team_size = self._rng.choice(phase.team_sizes)
             env = ArenaEnv(team_size=team_size)
 
-            stats = self.collect_rollout(env, buffer)
+            opponent_agent = self._sample_opponent_agent(pool)
+            opponent_team = self._rng.choice(["team_a", "team_b"])
+            stats = self.collect_rollout(
+                env,
+                buffer,
+                opponent_agent=opponent_agent,
+                opponent_team=opponent_team,
+            )
             total_episodes += 1
 
             winner = stats.get("winner")
