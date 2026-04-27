@@ -84,6 +84,7 @@ class TrainingLogger:
             "policy_loss": round(update_result.get("policy_loss", 0), 6),
             "value_loss": round(update_result.get("value_loss", 0), 2),
             "entropy": round(update_result.get("entropy", 0), 4),
+            "entropy_coeff": round(update_result.get("entropy_coeff", 0.0), 4),
             "avg_reward_50": round(avg_reward, 2),
             "avg_steps_50": round(avg_steps, 1),
             "wins_50": {"a": win_a, "b": win_b, "draw": draws},
@@ -107,6 +108,24 @@ class TrainingLogger:
             f"ent={ent:.3f} "
             f"w={win_a}/{win_b}/{draws} "
             f"({elapsed:.0f}s)"
+        )
+
+    def log_eval(self, eval_result: dict) -> None:
+        record = {
+            "phase": self._current_phase,
+            "update": self._update_count,
+            "episode": self._episode_count,
+            "eval": eval_result,
+        }
+        with open(self._log_file, "a") as f:
+            f.write(json.dumps(record) + "\n")
+
+        wr = eval_result.get("win_rate", 0.0)
+        n = eval_result.get("n_episodes", 0)
+        ts = eval_result.get("team_size", 0)
+        print(
+            f"  [eval] ep={self._episode_count:<5d} "
+            f"win_rate={wr:.2%} (n={n}, team_size={ts})"
         )
 
     def end_phase(self, checkpoint_dir: str | None = None) -> None:

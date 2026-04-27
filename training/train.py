@@ -2,10 +2,18 @@ from __future__ import annotations
 
 import argparse
 
+import numpy as np
+import torch
+
 from training.agents.mappo import MAPPOAgent
 from training.curriculum.phases import CURRICULUM_PHASES, PhaseConfig
 from training.curriculum.self_play import SelfPlayPool
 from training.curriculum.trainer import Trainer
+
+
+def _seed_everything(seed: int) -> None:
+    np.random.seed(seed)
+    torch.manual_seed(seed)
 
 
 def main() -> None:
@@ -25,6 +33,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    _seed_everything(args.seed)
     agent = MAPPOAgent()
     trainer = Trainer(agent, seed=args.seed, log_dir=args.log_dir)
 

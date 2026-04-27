@@ -74,15 +74,15 @@ class TestRolloutBuffer:
 
 class TestMAPPOAgent:
     def test_creates_with_5_policies(self):
-        agent = MAPPOAgent(obs_size=OBS_SIZE)
+        agent = MAPPOAgent(obs_size=OBS_SIZE, global_state_size=OBS_SIZE)
         assert len(agent.policies) == 5
 
     def test_creates_with_1_critic(self):
-        agent = MAPPOAgent(obs_size=OBS_SIZE)
+        agent = MAPPOAgent(obs_size=OBS_SIZE, global_state_size=OBS_SIZE)
         assert agent.critic is not None
 
     def test_select_action(self):
-        agent = MAPPOAgent(obs_size=OBS_SIZE)
+        agent = MAPPOAgent(obs_size=OBS_SIZE, global_state_size=OBS_SIZE)
         obs = np.random.randn(OBS_SIZE).astype(np.float32)
         type_mask = np.ones(NUM_TYPES, dtype=bool)
         target_mask = np.ones(NUM_TARGETS, dtype=bool)
@@ -95,7 +95,7 @@ class TestMAPPOAgent:
         assert isinstance(log_prob, float)
 
     def test_select_action_all_classes(self):
-        agent = MAPPOAgent(obs_size=OBS_SIZE)
+        agent = MAPPOAgent(obs_size=OBS_SIZE, global_state_size=OBS_SIZE)
         obs = np.random.randn(OBS_SIZE).astype(np.float32)
         type_mask = np.ones(NUM_TYPES, dtype=bool)
         target_mask = np.ones(NUM_TARGETS, dtype=bool)
@@ -104,13 +104,13 @@ class TestMAPPOAgent:
             assert len(action) == 2
 
     def test_get_value(self):
-        agent = MAPPOAgent(obs_size=OBS_SIZE)
+        agent = MAPPOAgent(obs_size=OBS_SIZE, global_state_size=OBS_SIZE)
         obs = np.random.randn(OBS_SIZE).astype(np.float32)
         value = agent.get_value(obs)
         assert isinstance(value, float)
 
     def test_update_runs(self):
-        agent = MAPPOAgent(obs_size=OBS_SIZE)
+        agent = MAPPOAgent(obs_size=OBS_SIZE, global_state_size=OBS_SIZE)
         buf = RolloutBuffer()
         for step in range(64):
             buf.add(
@@ -127,7 +127,7 @@ class TestMAPPOAgent:
         agent.update(buf)
 
     def test_save_and_load(self):
-        agent = MAPPOAgent(obs_size=OBS_SIZE)
+        agent = MAPPOAgent(obs_size=OBS_SIZE, global_state_size=OBS_SIZE)
         obs = torch.randn(1, OBS_SIZE)
         type_mask = torch.ones(1, NUM_TYPES, dtype=torch.bool)
         target_mask = torch.ones(1, NUM_TARGETS, dtype=torch.bool)
@@ -141,7 +141,7 @@ class TestMAPPOAgent:
             assert os.path.exists(os.path.join(tmpdir, "mage.pt"))
             assert os.path.exists(os.path.join(tmpdir, "critic.pt"))
 
-            agent2 = MAPPOAgent(obs_size=OBS_SIZE)
+            agent2 = MAPPOAgent(obs_size=OBS_SIZE, global_state_size=OBS_SIZE)
             agent2.load(tmpdir)
 
             with torch.no_grad():

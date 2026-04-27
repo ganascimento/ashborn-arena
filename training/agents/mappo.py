@@ -8,7 +8,7 @@ import torch.nn as nn
 
 from training.agents.buffer import RolloutBuffer
 from training.agents.networks import CriticNetwork, PolicyNetwork
-from training.environment.observations import OBS_TOTAL_SIZE
+from training.environment.observations import GLOBAL_STATE_SIZE, OBS_TOTAL_SIZE
 
 _CLASS_NAMES = ["warrior", "mage", "cleric", "archer", "assassin"]
 
@@ -17,11 +17,12 @@ class MAPPOAgent:
     def __init__(
         self,
         obs_size: int = OBS_TOTAL_SIZE,
+        global_state_size: int = GLOBAL_STATE_SIZE,
         num_action_types: int = 10,
         num_targets: int = 80,
         lr: float = 3e-4,
         clip_range: float = 0.2,
-        entropy_coeff: float = 0.01,
+        entropy_coeff: float = 0.05,
         value_coeff: float = 0.5,
         max_grad_norm: float = 0.5,
         epochs: int = 4,
@@ -30,7 +31,7 @@ class MAPPOAgent:
             name: PolicyNetwork(obs_size, num_action_types, num_targets)
             for name in _CLASS_NAMES
         }
-        self.critic = CriticNetwork(obs_size)
+        self.critic = CriticNetwork(global_state_size)
 
         self._clip_range = clip_range
         self._entropy_coeff = entropy_coeff
@@ -38,6 +39,7 @@ class MAPPOAgent:
         self._max_grad_norm = max_grad_norm
         self._epochs = epochs
         self._obs_size = obs_size
+        self._global_state_size = global_state_size
         self._num_action_types = num_action_types
         self._num_targets = num_targets
 
@@ -74,6 +76,7 @@ class MAPPOAgent:
         obs: np.ndarray,
         type_mask: np.ndarray,
         full_target_mask: np.ndarray,
+        deterministic: bool = False,
     ) -> tuple[tuple[int, int], float, float, np.ndarray]:
         policy = self.policies[class_name]
         obs_t = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
@@ -82,7 +85,7 @@ class MAPPOAgent:
 
         with torch.no_grad():
             action, log_prob, entropy, used_mask = policy.get_action_hierarchical(
-                obs_t, tm, ftm
+                obs_t, tm, ftm, deterministic=deterministic
             )
 
         return (
@@ -92,13 +95,18 @@ class MAPPOAgent:
             used_mask.squeeze(0).numpy(),
         )
 
-    def get_value(self, obs: np.ndarray) -> float:
-        obs_t = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
+    def get_value(self, global_state: np.ndarray) -> float:
+        gs_t = torch.tensor(global_state, dtype=torch.float32).unsqueeze(0)
         with torch.no_grad():
-            value = self.critic(obs_t)
+            value = self.critic(gs_t)
         return value.item()
 
-    def update(self, buffer: RolloutBuffer) -> dict[str, float]:
+    def update(
+        self,
+        buffer: RolloutBuffer,
+        entropy_coeff: float | None = None,
+    ) -> dict[str, float]:
+        ent_coeff = self._entropy_coeff if entropy_coeff is None else entropy_coeff
         buffer.compute_returns()
         total_policy_loss = 0.0
         total_value_loss = 0.0
@@ -118,6 +126,7 @@ class MAPPOAgent:
                     returns = batch["returns"]
                     type_masks = batch["type_masks"]
                     target_masks = batch["target_masks"]
+                    global_states = batch.get("global_states", obs)
 
                     adv_batch = advantages
                     if adv_batch.numel() > 1 and adv_batch.std() > 1e-8:
@@ -140,13 +149,13 @@ class MAPPOAgent:
                     policy_loss = -torch.min(surr1, surr2).mean()
                     entropy_bonus = new_entropy.mean()
 
-                    values = self.critic(obs).squeeze(-1)
+                    values = self.critic(global_states).squeeze(-1)
                     value_loss = nn.functional.mse_loss(values, returns)
 
                     loss = (
                         policy_loss
                         + self._value_coeff * value_loss
-                        - self._entropy_coeff * entropy_bonus
+                        - ent_coeff * entropy_bonus
                     )
 
                     self._optimizer.zero_grad(set_to_none=True)

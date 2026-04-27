@@ -117,7 +117,11 @@ class ArenaEnv(AECEnv):
         events = self._battle.execute_action(action_type, target)
 
         step_rewards = compute_rewards(
-            events, agent, self._agent_teams.get(agent, ""), self._agent_teams
+            events,
+            agent,
+            self._agent_teams.get(agent, ""),
+            self._agent_teams,
+            battle_state=self._battle,
         )
         for eid, r in step_rewards.items():
             if eid in self.rewards:
@@ -131,9 +135,11 @@ class ArenaEnv(AECEnv):
 
         self._remove_dead_agents()
 
+        extra_events: list[dict] = []
+        events_seen = len(self._battle._events)
         if not all(self.terminations.values()):
             if action_type in (ActionType.END_TURN, ActionType.PASS):
-                self._battle.process_turn_start()
+                extra_events.extend(self._battle.process_turn_start())
                 self._advance_to_active_agent()
 
             pa = (
@@ -142,10 +148,33 @@ class ArenaEnv(AECEnv):
                 else 0
             )
             if pa <= 0 and not self._battle.is_over:
-                self._battle.process_turn_end()
+                extra_events.extend(self._battle.process_turn_end())
                 self._battle._turn_manager.end_turn()
-                self._battle.process_turn_start()
+                extra_events.extend(self._battle.process_turn_start())
                 self._advance_to_active_agent()
+
+        indirect = self._battle._events[events_seen:]
+        if indirect:
+            extra_events.extend(indirect)
+
+        if extra_events:
+            extra_rewards = compute_rewards(
+                extra_events,
+                agent,
+                self._agent_teams.get(agent, ""),
+                self._agent_teams,
+                battle_state=self._battle,
+            )
+            for eid, r in extra_rewards.items():
+                if eid in self.rewards:
+                    self.rewards[eid] += r
+
+            winner = self._battle.check_victory()
+            if winner:
+                apply_terminal_rewards(self.rewards, winner, self._agent_teams)
+                for a in self.agents:
+                    self.terminations[a] = True
+            self._remove_dead_agents()
 
         for a in self.agents:
             self._update_info(a)

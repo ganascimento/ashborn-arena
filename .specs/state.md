@@ -87,3 +87,9 @@ Este arquivo mantem o estado atual do desenvolvimento de cada feature do projeto
 | --- | ----------------------------- | --------- | ------------- | ---------------------------------------------------------------------------------- |
 | 29  | Visual, cenario e auto-battle | concluida | 10, 11, 21-28 | [features/29_visual_cenario_auto_battle/](features/29_visual_cenario_auto_battle/) |
 | 30  | Cenario noturno compartilhado | concluida | 20, 29        | [features/30_cenario_noturno_compartilhado/](features/30_cenario_noturno_compartilhado/) |
+
+### Treinamento — melhorias (training/)
+
+| #   | Feature                                       | Status    | Dep. | Spec                                                                                       |
+| --- | --------------------------------------------- | --------- | ---- | ------------------------------------------------------------------------------------------ |
+| 31  | MAPPO — critic centralizado, reward por % HP, annealing e eval loop | concluida | 14-16 | [features/31_mappo_critic_centralizado_eval/](features/31_mappo_critic_centralizado_eval/) |

@@ -6,3 +6,6 @@ dist/
 build/
 node_modules/
 .env
+
+models/_phase_*/
+logs/training.jsonl

@@ -368,6 +368,7 @@ class BattleState:
                     {
                         "type": "dot_tick",
                         "entity": agent,
+                        "attacker": effect.source_entity_id,
                         "tag": effect.tag,
                         "damage": int(effect.value),
                     }
@@ -505,7 +506,12 @@ class BattleState:
                 )
                 self._characters[agent].apply_damage(trap_damage)
                 self._events.append(
-                    {"type": "trap_triggered", "target": agent, "damage": trap_damage}
+                    {
+                        "type": "trap_triggered",
+                        "attacker": caster_id,
+                        "target": agent,
+                        "damage": trap_damage,
+                    }
                 )
                 for bd in trap_ability.effects:
                     effect = Effect(
@@ -1211,6 +1217,7 @@ class BattleState:
                 {
                     "type": "chain_secondary",
                     "ability": ability.id,
+                    "attacker": attacker_id,
                     "target": tid,
                     "damage": chain_damage,
                 }

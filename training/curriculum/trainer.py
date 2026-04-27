@@ -5,6 +5,7 @@ import random as _random
 from pathlib import Path
 
 import numpy as np
+import torch
 
 from training.agents.buffer import RolloutBuffer
 from training.agents.mappo import MAPPOAgent
@@ -12,6 +13,7 @@ from training.curriculum.logger import TrainingLogger
 from training.curriculum.phases import PhaseConfig
 from training.curriculum.self_play import SelfPlayPool
 from training.environment.arena_env import ArenaEnv
+from training.environment.observations import encode_global_state
 from training.environment.rewards import REWARD_DEFEAT, REWARD_VICTORY
 
 
@@ -36,12 +38,26 @@ def _resume_dir(phase: PhaseConfig) -> str:
 
 class Trainer:
     def __init__(
-        self, agent: MAPPOAgent, seed: int = 42, log_dir: str = "logs"
+        self,
+        agent: MAPPOAgent,
+        seed: int = 42,
+        log_dir: str = "logs",
+        eval_interval: int = 1000,
+        eval_episodes: int = 50,
+        entropy_initial: float = 0.05,
+        entropy_final: float = 0.005,
     ) -> None:
         self._agent = agent
         self._seed = seed
         self._rng = _random.Random(seed)
+        self._eval_rng = _random.Random(seed + 1)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
         self._episode_count = 0
+        self._eval_interval = eval_interval
+        self._eval_episodes = eval_episodes
+        self._entropy_initial = entropy_initial
+        self._entropy_final = entropy_final
         self.logger = TrainingLogger(log_dir=log_dir)
 
     def collect_rollout(self, env: ArenaEnv, buffer: RolloutBuffer) -> dict:
@@ -84,7 +100,8 @@ class Trainer:
                 )
             )
 
-            value = self._agent.get_value(obs)
+            global_state = encode_global_state(env._battle)
+            value = self._agent.get_value(global_state)
 
             env.step(np.array([action[0], action[1]]))
 
@@ -110,6 +127,7 @@ class Trainer:
                 done=done,
                 type_mask=type_mask,
                 target_mask=used_target_mask,
+                global_state=global_state,
                 class_name=class_name,
             )
 
@@ -150,6 +168,89 @@ class Trainer:
             "total_reward": total_reward,
         }
 
+    def evaluate(self, team_size: int, n_episodes: int) -> dict:
+        wins_a = 0
+        wins_b = 0
+        draws = 0
+        total_steps = 0
+
+        for _ in range(n_episodes):
+            seed = self._eval_rng.randint(0, 2**31)
+            env = ArenaEnv(team_size=team_size)
+            env.reset(seed=seed)
+            steps = 0
+
+            while not all(env.terminations.values()):
+                agent_id = env.agent_selection
+                if env.terminations.get(agent_id, True):
+                    env.step(None)
+                    continue
+
+                mask = env.infos[agent_id]["action_mask"]
+                type_mask = mask["type_mask"]
+                full_target_mask = mask["target_mask"]
+
+                valid_type_idx = np.where(type_mask)[0]
+                if len(valid_type_idx) == 0:
+                    env.step(np.array([8, 0]))
+                    steps += 1
+                    continue
+
+                team = env._agent_teams.get(agent_id, "")
+                if team == "team_a":
+                    obs = env.observe(agent_id)
+                    char = env._battle.get_character(agent_id)
+                    class_name = char.character_class.value
+                    action, _, _, _ = self._agent.select_action_hierarchical(
+                        class_name,
+                        obs,
+                        type_mask,
+                        full_target_mask,
+                        deterministic=True,
+                    )
+                    env.step(np.array([action[0], action[1]]))
+                else:
+                    a_type = int(self._eval_rng.choice(valid_type_idx.tolist()))
+                    target_mask = full_target_mask[a_type]
+                    valid_targets = np.where(target_mask)[0]
+                    if len(valid_targets) == 0:
+                        a_target = 0
+                    else:
+                        a_target = int(
+                            self._eval_rng.choice(valid_targets.tolist())
+                        )
+                    env.step(np.array([a_type, a_target]))
+
+                steps += 1
+                if steps > 1000:
+                    break
+
+            winner = env._battle.check_victory() if env._battle else None
+            if winner == "team_a":
+                wins_a += 1
+            elif winner == "team_b":
+                wins_b += 1
+            else:
+                draws += 1
+            total_steps += steps
+
+        n = max(n_episodes, 1)
+        return {
+            "n_episodes": n_episodes,
+            "team_size": team_size,
+            "win_rate": wins_a / n,
+            "loss_rate": wins_b / n,
+            "draw_rate": draws / n,
+            "avg_steps": total_steps / n,
+        }
+
+    def _entropy_for_progress(self, progress: float) -> float:
+        progress = max(0.0, min(1.0, progress))
+        return (
+            self._entropy_initial
+            + (self._entropy_final - self._entropy_initial) * progress
+        )
+
     def train_phase(self, phase: PhaseConfig, pool: SelfPlayPool) -> dict:
         resume_dir = _resume_dir(phase)
         episode_offset = 0
@@ -165,12 +266,22 @@ class Trainer:
                 resumed = True
             except FileNotFoundError:
                 pass
+            except RuntimeError as exc:
+                print(
+                    f"  [warn] Could not resume from {resume_dir}: incompatible "
+                    f"checkpoint ({exc.__class__.__name__}). Starting phase from scratch."
+                )
 
         if not resumed and phase.load_from:
             try:
                 self._agent.load(phase.load_from)
             except FileNotFoundError:
                 pass
+            except RuntimeError as exc:
+                print(
+                    f"  [warn] Could not load from {phase.load_from}: incompatible "
+                    f"checkpoint ({exc.__class__.__name__}). Starting from random init."
+                )
 
         if episode_offset >= phase.episodes:
             print(
@@ -207,7 +318,10 @@ class Trainer:
             self.logger.log_episode(ep + 1, stats)
 
             if (ep + 1) % phase.update_interval == 0:
-                result = self._agent.update(buffer)
+                progress = (ep + 1) / max(phase.episodes, 1)
+                ent_coeff = self._entropy_for_progress(progress)
+                result = self._agent.update(buffer, entropy_coeff=ent_coeff)
+                result["entropy_coeff"] = ent_coeff
                 self.logger.log_update(result)
                 buffer.clear()
 
@@ -220,8 +334,18 @@ class Trainer:
                     updates=self.logger._update_count,
                 )
 
+            if self._eval_interval > 0 and (ep + 1) % self._eval_interval == 0:
+                eval_team_size = self._rng.choice(phase.team_sizes)
+                eval_result = self.evaluate(
+                    team_size=eval_team_size,
+                    n_episodes=self._eval_episodes,
+                )
+                self.logger.log_eval(eval_result)
+
         if buffer._data and any(buffer.size(aid) > 0 for aid in buffer._data):
-            result = self._agent.update(buffer)
+            ent_coeff = self._entropy_for_progress(1.0)
+            result = self._agent.update(buffer, entropy_coeff=ent_coeff)
+            result["entropy_coeff"] = ent_coeff
             self.logger.log_update(result)
             buffer.clear()
 

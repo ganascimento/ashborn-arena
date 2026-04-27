@@ -11,7 +11,7 @@ from training.environment.observations import (
     OBS_TOTAL_SIZE,
 )
 from training.environment.rewards import (
-    REWARD_DAMAGE,
+    REWARD_DAMAGE_PCT,
     REWARD_DEFEAT,
     REWARD_VICTORY,
 )
@@ -168,7 +168,7 @@ class TestRewards:
     def test_victory_constants(self):
         assert REWARD_VICTORY == 10
         assert REWARD_DEFEAT == -10
-        assert REWARD_DAMAGE == pytest.approx(0.1)
+        assert REWARD_DAMAGE_PCT == pytest.approx(2.0)
 
 
 class TestTermination:

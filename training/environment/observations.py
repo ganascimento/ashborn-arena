@@ -23,6 +23,9 @@ _CLASS_ORDER = [
     CharacterClass.ASSASSIN,
 ]
 
+_OBJECT_TYPES = list(ObjectType)
+_MAP_NORM = float(len(_OBJECT_TYPES) + 10)
+
 
 def _one_hot_class(cls: CharacterClass) -> list[float]:
     return [1.0 if c == cls else 0.0 for c in _CLASS_ORDER]
@@ -121,10 +124,10 @@ def encode_observation(battle_state: BattleState, agent_id: str) -> np.ndarray:
         if obj.is_destroyed:
             continue
         idx = obj.position.y * 10 + obj.position.x
-        val = float(list(ObjectType).index(obj.object_type) + 1)
+        val = float(_OBJECT_TYPES.index(obj.object_type) + 1)
         if obj.on_fire:
             val += 10.0
-        map_data[idx] = val
+        map_data[idx] = val / _MAP_NORM
     obs.extend(map_data)
 
     return np.array(obs, dtype=np.float32)

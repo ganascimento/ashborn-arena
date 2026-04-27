@@ -1,8 +1,16 @@
 from __future__ import annotations
 
+import math
+
 import torch
 import torch.nn as nn
 from torch.distributions import Categorical
+
+
+def _orthogonal_init(module: nn.Module, gain: float) -> None:
+    if isinstance(module, nn.Linear):
+        nn.init.orthogonal_(module.weight, gain=gain)
+        nn.init.zeros_(module.bias)
 
 
 class PolicyNetwork(nn.Module):
@@ -22,6 +30,12 @@ class PolicyNetwork(nn.Module):
         )
         self.type_head = nn.Linear(hidden_size, num_action_types)
         self.target_head = nn.Linear(hidden_size, num_targets)
+
+        relu_gain = math.sqrt(2)
+        for layer in self.shared:
+            _orthogonal_init(layer, relu_gain)
+        _orthogonal_init(self.type_head, 0.01)
+        _orthogonal_init(self.target_head, 0.01)
 
     def forward(
         self,
@@ -56,6 +70,7 @@ class PolicyNetwork(nn.Module):
         obs: torch.Tensor,
         type_mask: torch.Tensor,
         full_target_mask: torch.Tensor,
+        deterministic: bool = False,
     ) -> tuple[
         tuple[torch.Tensor, torch.Tensor], torch.Tensor, torch.Tensor, torch.Tensor
     ]:
@@ -63,7 +78,10 @@ class PolicyNetwork(nn.Module):
         type_logits = self.type_head(features)
         type_logits = type_logits.masked_fill(~type_mask, -1e8)
         type_dist = Categorical(logits=type_logits)
-        action_type = type_dist.sample()
+        if deterministic:
+            action_type = type_logits.argmax(dim=-1)
+        else:
+            action_type = type_dist.sample()
 
         target_logits = self.target_head(features)
         selected_mask = full_target_mask[torch.arange(obs.shape[0]), action_type]
@@ -72,7 +90,10 @@ class PolicyNetwork(nn.Module):
             selected_mask[no_valid, 0] = True
         target_logits = target_logits.masked_fill(~selected_mask, -1e8)
         target_dist = Categorical(logits=target_logits)
-        target = target_dist.sample()
+        if deterministic:
+            target = target_logits.argmax(dim=-1)
+        else:
+            target = target_dist.sample()
 
         log_prob = type_dist.log_prob(action_type) + target_dist.log_prob(target)
         entropy = type_dist.entropy() + target_dist.entropy()
@@ -103,6 +124,11 @@ class CriticNetwork(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_size, 1),
         )
+
+        relu_gain = math.sqrt(2)
+        for layer in self.net[:-1]:
+            _orthogonal_init(layer, relu_gain)
+        _orthogonal_init(self.net[-1], 1.0)
 
     def forward(self, global_state: torch.Tensor) -> torch.Tensor:
         return self.net(global_state)
