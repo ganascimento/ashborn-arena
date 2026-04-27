@@ -45,7 +45,7 @@ CURRICULUM_PHASES: list[PhaseConfig] = [
     PhaseConfig(
         phase_number=4,
         team_sizes=[1, 2, 3],
-        episodes=10000,
+        episodes=20000,
         update_interval=10,
         pool_interval=50,
         checkpoint_dir="models/hard",
