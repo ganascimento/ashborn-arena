@@ -262,6 +262,28 @@ models/
 
 5 `.pt` files per difficulty level (one per class), **15 files total**.
 
+### <img src="https://em-content.zobj.net/source/apple/391/hourglass-not-done_23f3.png" width="16" /> Running training in the background
+
+For long runs on a VPS (or any remote machine where you want to disconnect and come back later), use the helper script:
+
+```bash
+./scripts/train_background.sh
+```
+
+It launches `python -m training.train` detached via `nohup`, writes stdout/stderr to `logs/train.out` and the process ID to `logs/train.pid`. Any extra args are forwarded to the training CLI:
+
+```bash
+./scripts/train_background.sh --phase 3 --episodes 5000 --log-dir logs/runs/2026-04-28_baseline
+```
+
+| Action | Command |
+|---|---|
+| <img src="https://em-content.zobj.net/source/apple/391/eyes_1f440.png" width="14" /> Follow logs live | `tail -f logs/train.out` |
+| <img src="https://em-content.zobj.net/source/apple/391/magnifying-glass-tilted-left_1f50d.png" width="14" /> Check if running | `ps -p $(cat logs/train.pid)` |
+| <img src="https://em-content.zobj.net/source/apple/391/octagonal-sign_1f6d1.png" width="14" /> Stop the run | `kill $(cat logs/train.pid)` |
+
+Both `logs/train.out` and `logs/train.pid` are gitignored.
+
 ### <img src="https://em-content.zobj.net/source/apple/391/chart-increasing_1f4c8.png" width="16" /> Visualizing training
 
 The `TrainingLogger` writes metrics to two parallel channels:

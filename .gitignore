@@ -12,3 +12,5 @@ logs/scratch/
 logs/training.jsonl
 logs/training_full.log
 logs/tb/
+logs/train.out
+logs/train.pid
