@@ -46,11 +46,6 @@ def compute_action_mask(battle_state: BattleState, agent_id: str) -> dict:
     team = battle_state.get_team(agent_id)
     blockers = battle_state.get_blocking_positions()
 
-    type_mask[ActionType.END_TURN] = True
-    target_mask[ActionType.END_TURN, 0] = True
-    type_mask[ActionType.PASS] = True
-    target_mask[ActionType.PASS, 0] = True
-
     if pa >= 1:
         reachable = battle_state.get_reachable_tiles(agent_id)
         if reachable:
@@ -149,5 +144,12 @@ def compute_action_mask(battle_state: BattleState, agent_id: str) -> dict:
                         dist = max(abs(tile.x - pos.x), abs(tile.y - pos.y))
                         if dist <= ability.max_range:
                             target_mask[action_idx, _pos_to_idx(tile)] = True
+
+    has_other = bool(type_mask[: ActionType.END_TURN].any())
+    if not has_other:
+        type_mask[ActionType.END_TURN] = True
+        target_mask[ActionType.END_TURN, 0] = True
+        type_mask[ActionType.PASS] = True
+        target_mask[ActionType.PASS, 0] = True
 
     return {"type_mask": type_mask, "target_mask": target_mask}

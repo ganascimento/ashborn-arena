@@ -81,12 +81,17 @@ class TestObservation:
 
 
 class TestActionMask:
-    def test_end_turn_always_available(self):
+    def test_end_turn_only_when_no_other_action(self):
         env = ArenaEnv(team_size=1)
         env.reset(seed=42)
         agent = env.agent_selection
         mask = env.infos[agent]["action_mask"]
-        assert mask["type_mask"][ActionType.END_TURN] == True
+        offensive = bool(mask["type_mask"][:ActionType.END_TURN].any())
+        if offensive:
+            assert mask["type_mask"][ActionType.END_TURN] == False
+            assert mask["type_mask"][ActionType.PASS] == False
+        else:
+            assert mask["type_mask"][ActionType.END_TURN] == True
 
     def test_cooldown_masks_ability(self):
         env = ArenaEnv(team_size=1)

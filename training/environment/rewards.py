@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from engine.models.character import CharacterState
+
 if TYPE_CHECKING:
     from engine.systems.battle import BattleState
 
@@ -13,6 +15,10 @@ REWARD_ALLY_DEAD = -2.0
 REWARD_DAMAGE_PCT = 2.0
 REWARD_HEAL_PCT = 2.0
 REWARD_COMBO = 0.5
+REWARD_TIME_PENALTY = -0.01
+REWARD_APPROACH_MELEE = 0.15
+
+MELEE_CLASSES = frozenset({"warrior", "assassin"})
 
 
 def _max_hp(battle_state: "BattleState | None", entity_id: str) -> int:
@@ -101,6 +107,45 @@ def compute_rewards(
         elif etype == "combo":
             if agent_id in rewards:
                 rewards[agent_id] += REWARD_COMBO
+
+        elif etype == "move":
+            entity = event.get("entity", "")
+            if entity not in rewards or battle_state is None:
+                continue
+            from_pos = event.get("from")
+            to_pos = event.get("to")
+            if from_pos is None or to_pos is None:
+                continue
+            try:
+                char_class = battle_state.get_character(entity).character_class.value
+            except (KeyError, AttributeError):
+                continue
+            if char_class not in MELEE_CLASSES:
+                continue
+            entity_team = all_agents.get(entity, "")
+            min_old: int | None = None
+            min_new: int | None = None
+            for eid, team in all_agents.items():
+                if team == entity_team or eid == entity:
+                    continue
+                try:
+                    ec = battle_state.get_character(eid)
+                except KeyError:
+                    continue
+                if ec.state == CharacterState.DEAD:
+                    continue
+                try:
+                    epos = battle_state.get_position(eid)
+                except KeyError:
+                    continue
+                old_d = max(abs(epos.x - from_pos.x), abs(epos.y - from_pos.y))
+                new_d = max(abs(epos.x - to_pos.x), abs(epos.y - to_pos.y))
+                if min_old is None or old_d < min_old:
+                    min_old = old_d
+                if min_new is None or new_d < min_new:
+                    min_new = new_d
+            if min_old is not None and min_new is not None:
+                rewards[entity] += (min_old - min_new) * REWARD_APPROACH_MELEE
 
     return rewards
 

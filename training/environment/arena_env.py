@@ -18,7 +18,11 @@ from training.environment.actions import (
     compute_action_mask,
 )
 from training.environment.observations import OBS_TOTAL_SIZE, encode_observation
-from training.environment.rewards import apply_terminal_rewards, compute_rewards
+from training.environment.rewards import (
+    REWARD_TIME_PENALTY,
+    apply_terminal_rewards,
+    compute_rewards,
+)
 
 _DEFAULT_BUILD = (2, 2, 2, 2, 2)
 _ALL_CLASSES = list(CharacterClass)
@@ -126,6 +130,9 @@ class ArenaEnv(AECEnv):
         for eid, r in step_rewards.items():
             if eid in self.rewards:
                 self.rewards[eid] += r
+
+        if agent in self.rewards:
+            self.rewards[agent] += REWARD_TIME_PENALTY
 
         winner = self._battle.check_victory()
         if winner:

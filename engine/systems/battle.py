@@ -662,12 +662,14 @@ class BattleState:
                     if ability.lifesteal_pct > 0 and result.get("damage", 0) > 0:
                         heal_amount = int(result["damage"] * ability.lifesteal_pct)
                         if heal_amount > 0:
+                            hp_before = char.current_hp
                             char.apply_healing(heal_amount)
+                            applied = char.current_hp - hp_before
                             self._events.append(
                                 {
                                     "type": "lifesteal",
                                     "entity": agent,
-                                    "heal": heal_amount,
+                                    "heal": applied,
                                 }
                             )
                 else:
@@ -689,9 +691,11 @@ class BattleState:
             heal_raw = calculate_raw_damage(
                 ability.self_heal_base, modifier, ability.self_heal_scaling
             )
+            hp_before = char.current_hp
             char.apply_healing(heal_raw)
+            applied = char.current_hp - hp_before
             self._events.append(
-                {"type": "self_heal", "entity": agent, "heal": heal_raw}
+                {"type": "self_heal", "entity": agent, "heal": applied}
             )
 
         for buff_def in ability.effects:
