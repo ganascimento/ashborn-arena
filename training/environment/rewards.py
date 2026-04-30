@@ -17,6 +17,8 @@ REWARD_HEAL_PCT = 2.0
 REWARD_COMBO = 0.5
 REWARD_TIME_PENALTY = -0.01
 REWARD_APPROACH_MELEE = 0.15
+REWARD_SAVE_ALLY = 2.0
+REWARD_FRIENDLY_FIRE = -4.0
 
 MELEE_CLASSES = frozenset({"warrior", "assassin"})
 
@@ -28,6 +30,25 @@ def _max_hp(battle_state: "BattleState | None", entity_id: str) -> int:
         return max(battle_state.get_character(entity_id).max_hp, 1)
     except (KeyError, AttributeError):
         return 100
+
+
+def _current_hp(battle_state: "BattleState | None", entity_id: str) -> int:
+    if battle_state is None or not entity_id:
+        return 0
+    try:
+        return battle_state.get_character(entity_id).current_hp
+    except (KeyError, AttributeError):
+        return 0
+
+
+def _missing_hp_pct_before_heal(
+    battle_state: "BattleState | None", entity_id: str, applied_heal: int
+) -> float:
+    max_hp = _max_hp(battle_state, entity_id)
+    hp_after = _current_hp(battle_state, entity_id)
+    hp_before = hp_after - applied_heal
+    missing_before = max_hp - hp_before
+    return min(max(missing_before / max_hp, 0.0), 1.0)
 
 
 def compute_rewards(
@@ -58,7 +79,12 @@ def compute_rewards(
             if damage > 0 and attacker in rewards:
                 target_max_hp = _max_hp(battle_state, target)
                 pct = min(damage / target_max_hp, 1.0)
-                rewards[attacker] += pct * REWARD_DAMAGE_PCT
+                attacker_team = all_agents.get(attacker, "")
+                target_team = all_agents.get(target, "")
+                if attacker_team and attacker_team == target_team:
+                    rewards[attacker] += pct * REWARD_FRIENDLY_FIRE
+                else:
+                    rewards[attacker] += pct * REWARD_DAMAGE_PCT
 
         elif etype == "reflect":
             damage = event.get("damage", 0)
@@ -76,7 +102,12 @@ def compute_rewards(
             if amount > 0 and healer in rewards:
                 target_max_hp = _max_hp(battle_state, target)
                 pct = min(amount / target_max_hp, 1.0)
-                rewards[healer] += pct * REWARD_HEAL_PCT
+                missing_pct = _missing_hp_pct_before_heal(
+                    battle_state, target, amount
+                )
+                rewards[healer] += pct * REWARD_HEAL_PCT * missing_pct
+                if target != healer and missing_pct > 0:
+                    rewards[healer] += missing_pct ** 2 * REWARD_SAVE_ALLY
 
         elif etype == "hot_tick":
             heal = event.get("heal", 0)
@@ -84,9 +115,12 @@ def compute_rewards(
             if heal > 0 and entity in rewards:
                 entity_max_hp = _max_hp(battle_state, entity)
                 pct = min(heal / entity_max_hp, 1.0)
+                missing_pct = _missing_hp_pct_before_heal(
+                    battle_state, entity, heal
+                )
                 for eid, team in all_agents.items():
                     if team == all_agents.get(entity, ""):
-                        rewards[eid] += pct * REWARD_HEAL_PCT * 0.5
+                        rewards[eid] += pct * REWARD_HEAL_PCT * missing_pct * 0.5
 
         elif etype == "knocked_out":
             entity = event.get("entity", "")

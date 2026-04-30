@@ -378,13 +378,15 @@ class BattleState:
                 elif state == CharacterState.KNOCKED_OUT:
                     events.append({"type": "knocked_out", "entity": agent})
             elif effect.effect_type == EffectType.HOT:
+                hp_before = char.current_hp
                 char.apply_healing(int(effect.value))
+                applied = char.current_hp - hp_before
                 events.append(
                     {
                         "type": "hot_tick",
                         "entity": agent,
                         "tag": effect.tag,
-                        "heal": int(effect.value),
+                        "heal": applied,
                     }
                 )
 
