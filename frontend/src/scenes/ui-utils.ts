@@ -74,12 +74,20 @@ export function createNightLandscape(
   const mtnBack = scene.add.graphics();
   mtnBack.setDepth(baseDepth + 0.3);
   mtnBack.fillStyle(0x2a2a4c, 1);
-  drawMountainRange(mtnBack, width, HORIZON_Y, height * 0.26, 3, 17);
+  drawMountainRange(mtnBack, width, HORIZON_Y, height * 0.28, 4, 17, {
+    shadeColor: 0x22223f,
+    snowColor: 0x4c4d74,
+    snowAlpha: 0.45,
+  });
 
   const mtnFront = scene.add.graphics();
   mtnFront.setDepth(baseDepth + 0.4);
   mtnFront.fillStyle(0x16162e, 1);
-  drawMountainRange(mtnFront, width, HORIZON_Y, height * 0.22, 5, 91);
+  drawMountainRange(mtnFront, width, HORIZON_Y, height * 0.24, 6, 91, {
+    shadeColor: 0x101023,
+    snowColor: 0x34365f,
+    snowAlpha: 0.38,
+  });
 
   createRiver(
     scene,
@@ -100,32 +108,56 @@ export function createNightLandscape(
     ground.fillRect(0, y, width, PIXEL);
   }
 
-  const forest = scene.add.graphics();
-  forest.setDepth(baseDepth + 0.6);
-  drawForestLayer(forest, width, RIVER_BOTTOM + PIXEL, PIXEL, {
-    foliageColor: 0x18302a,
-    trunkColor: 0x18302a,
+  const forestBack = scene.add.graphics();
+  forestBack.setDepth(baseDepth + 0.6);
+  drawForestLayer(forestBack, width, RIVER_BOTTOM + PIXEL, PIXEL, {
+    foliageColor: 0x1b3b32,
+    trunkColor: 0x14271f,
+    highlightColor: 0x2d5346,
     treeMinSize: 0,
     treeMaxSize: 1,
-    spacing: PIXEL * 3,
+    spacing: PIXEL * 2.4,
     seed: 7,
+    style: "mixed",
   });
-  drawForestLayer(forest, width, height * 0.82, PIXEL, {
-    foliageColor: 0x0c1e16,
-    trunkColor: 0x0a1410,
+  drawForestLayer(forestBack, width, RIVER_BOTTOM + PIXEL * 9, PIXEL, {
+    foliageColor: 0x142c22,
+    trunkColor: 0x0d1a14,
+    highlightColor: 0x254234,
     treeMinSize: 1,
-    treeMaxSize: 3,
-    spacing: PIXEL * 4,
+    treeMaxSize: 2,
+    spacing: PIXEL * 3.1,
+    seed: 31,
+    style: "pine",
+  });
+
+  const forestMid = scene.add.graphics();
+  forestMid.setDepth(baseDepth + 0.7);
+  drawForestLayer(forestMid, width, height * 0.78, PIXEL, {
+    foliageColor: 0x0e251a,
+    trunkColor: 0x09130f,
+    highlightColor: 0x1b3928,
+    treeMinSize: 2,
+    treeMaxSize: 4,
+    spacing: PIXEL * 3.2,
     seed: 13,
+    style: "mixed",
   });
-  drawForestLayer(forest, width, height + PIXEL * 4, PIXEL, {
-    foliageColor: 0x081410,
-    trunkColor: 0x05080a,
-    treeMinSize: 4,
-    treeMaxSize: 7,
-    spacing: PIXEL * 7,
+  drawForestUnderbrush(forestMid, width, height * 0.79, PIXEL, 0x10271b, 43);
+
+  const forestFront = scene.add.graphics();
+  forestFront.setDepth(baseDepth + 0.8);
+  drawForestLayer(forestFront, width, height + PIXEL * 3, PIXEL, {
+    foliageColor: 0x06120d,
+    trunkColor: 0x030807,
+    highlightColor: 0x0b2117,
+    treeMinSize: 5,
+    treeMaxSize: 8,
+    spacing: PIXEL * 4.8,
     seed: 23,
+    style: "mixed",
   });
+  drawForestUnderbrush(forestFront, width, height * 0.91, PIXEL, 0x020806, 71);
 }
 
 function drawPixelDisk(
@@ -152,6 +184,11 @@ function drawMountainRange(
   maxHeight: number,
   peakCount: number,
   seed: number,
+  details?: {
+    shadeColor: number;
+    snowColor: number;
+    snowAlpha: number;
+  },
 ) {
   let s = seed;
   const rand = () => {
@@ -170,6 +207,7 @@ function drawMountainRange(
   }
 
   const pixel = 4;
+  const tops: number[] = [];
   for (let x = 0; x < width; x += pixel) {
     let topY = baseY;
     for (const peak of peaks) {
@@ -182,8 +220,37 @@ function drawMountainRange(
       }
     }
     const topYPx = Math.floor(topY / pixel) * pixel;
+    tops[x / pixel] = topYPx;
     if (topYPx < baseY) {
       gfx.fillRect(x, topYPx, pixel, baseY - topYPx);
+    }
+  }
+
+  if (!details) return;
+
+  for (const peak of peaks) {
+    const topX = Math.floor(peak.x / pixel) * pixel;
+    const topY = Math.floor((baseY - peak.height) / pixel) * pixel;
+    const ridgeLen = Math.max(8, Math.floor(peak.height * 0.42 / pixel));
+
+    gfx.fillStyle(details.snowColor, details.snowAlpha);
+    for (let row = 1; row < ridgeLen; row++) {
+      const y = topY + row * pixel;
+      const leftX = topX - Math.floor(row * 0.55) * pixel;
+      if (row % 2 !== 0) {
+        gfx.fillRect(leftX, y, pixel, pixel);
+      }
+      if (row > 3 && row % 4 === 0) {
+        gfx.fillRect(leftX - pixel, y, pixel, pixel);
+      }
+    }
+
+    gfx.fillStyle(details.shadeColor, 0.34);
+    for (let row = 3; row < ridgeLen + 8; row++) {
+      const y = topY + row * pixel;
+      const rightX = topX + Math.floor(row * 0.68) * pixel;
+      const widthPx = row % 3 === 0 ? pixel * 2 : pixel;
+      gfx.fillRect(rightX, y, widthPx, pixel);
     }
   }
 }
@@ -191,10 +258,12 @@ function drawMountainRange(
 interface ForestLayerOpts {
   foliageColor: number;
   trunkColor: number;
+  highlightColor: number;
   treeMinSize: number;
   treeMaxSize: number;
   spacing: number;
   seed: number;
+  style: "pine" | "mixed";
 }
 
 function drawForestLayer(
@@ -224,6 +293,9 @@ function drawForestLayer(
       pixel,
       opts.foliageColor,
       opts.trunkColor,
+      opts.highlightColor,
+      opts.style === "pine" || rand() < 0.55 ? "pine" : "round",
+      rand,
     );
   }
 }
@@ -236,21 +308,125 @@ function drawTree(
   pixel: number,
   foliageColor: number,
   trunkColor: number,
+  highlightColor: number,
+  style: "pine" | "round",
+  rand: () => number,
 ) {
-  const trunkH = pixel * Math.max(1, sizeMul);
-  const foliageRows = 4 + sizeMul * 2;
-  const foliageMaxHalf = 1 + sizeMul;
+  if (style === "round") {
+    drawRoundTree(
+      gfx,
+      baseX,
+      baseY,
+      sizeMul,
+      pixel,
+      foliageColor,
+      trunkColor,
+      highlightColor,
+      rand,
+    );
+    return;
+  }
+
+  const trunkH = pixel * Math.max(2, sizeMul + 1);
+  const foliageRows = 5 + sizeMul * 2;
+  const foliageMaxHalf = 1.5 + sizeMul;
   const trunkW = sizeMul >= 4 ? pixel * 2 : pixel;
+  const topY = baseY - trunkH - foliageRows * pixel;
+
+  gfx.fillStyle(trunkColor, 1);
+  gfx.fillRect(baseX - trunkW / 2, baseY - trunkH, trunkW, trunkH);
+  if (sizeMul >= 3) {
+    gfx.fillStyle(0x0a100c, 0.5);
+    gfx.fillRect(baseX - trunkW / 2, baseY - trunkH, pixel / 2, trunkH);
+  }
+
+  gfx.fillStyle(foliageColor, 1);
+  for (let i = 0; i < foliageRows; i++) {
+    const t = i / Math.max(1, foliageRows - 1);
+    const wave = i % 3 === 1 ? 1 : 0;
+    const half = Math.max(1, Math.round(t * foliageMaxHalf) + wave);
+    const y = baseY - trunkH - (i + 1) * pixel;
+    const leftNib = rand() < 0.25 ? pixel : 0;
+    const rightNib = rand() < 0.25 ? pixel : 0;
+    gfx.fillRect(
+      baseX - half * pixel + leftNib,
+      y,
+      half * 2 * pixel - leftNib - rightNib,
+      pixel,
+    );
+  }
+
+  gfx.fillStyle(highlightColor, 0.65);
+  for (let i = 2; i < foliageRows - 1; i += 4) {
+    const t = i / Math.max(1, foliageRows - 1);
+    const half = Math.max(1, Math.round(t * foliageMaxHalf));
+    const y = baseY - trunkH - (i + 1) * pixel;
+    gfx.fillRect(baseX - half * pixel, y, pixel, pixel);
+    if (sizeMul > 2) {
+      gfx.fillRect(baseX + (half - 1) * pixel, y + pixel, pixel, pixel);
+    }
+  }
+
+  gfx.fillStyle(foliageColor, 1);
+  gfx.fillRect(baseX - pixel / 2, topY - pixel, pixel, pixel);
+}
+
+function drawRoundTree(
+  gfx: Phaser.GameObjects.Graphics,
+  baseX: number,
+  baseY: number,
+  sizeMul: number,
+  pixel: number,
+  foliageColor: number,
+  trunkColor: number,
+  highlightColor: number,
+  rand: () => number,
+) {
+  const trunkH = pixel * Math.max(2, sizeMul + 1);
+  const trunkW = sizeMul >= 4 ? pixel * 2 : pixel;
+  const radius = Math.max(2, sizeMul + 2);
+  const canopyY = baseY - trunkH - radius * pixel * 0.45;
 
   gfx.fillStyle(trunkColor, 1);
   gfx.fillRect(baseX - trunkW / 2, baseY - trunkH, trunkW, trunkH);
 
   gfx.fillStyle(foliageColor, 1);
-  for (let i = 0; i < foliageRows; i++) {
-    const t = (foliageRows - 1 - i) / Math.max(1, foliageRows - 1);
-    const half = Math.max(1, Math.round(t * foliageMaxHalf));
-    const y = baseY - trunkH - (i + 1) * pixel;
-    gfx.fillRect(baseX - half * pixel, y, half * 2 * pixel, pixel);
+  for (let row = -radius; row <= radius; row++) {
+    const rowAbs = Math.abs(row);
+    const half =
+      Math.max(1, Math.round((radius - rowAbs * 0.62) * (0.75 + rand() * 0.18)));
+    const y = Math.floor((canopyY + row * pixel) / pixel) * pixel;
+    const wobble = Math.floor((rand() - 0.5) * pixel * 1.2);
+    gfx.fillRect(baseX + wobble - half * pixel, y, half * 2 * pixel, pixel);
+  }
+
+  gfx.fillStyle(highlightColor, 0.55);
+  gfx.fillRect(baseX - radius * pixel * 0.55, canopyY - pixel, pixel * 2, pixel);
+  if (sizeMul > 2) {
+    gfx.fillRect(baseX + pixel, canopyY + pixel, pixel * 2, pixel);
+  }
+}
+
+function drawForestUnderbrush(
+  gfx: Phaser.GameObjects.Graphics,
+  width: number,
+  baseY: number,
+  pixel: number,
+  color: number,
+  seed: number,
+) {
+  let s = seed;
+  const rand = () => {
+    s = (s * 9301 + 49297) % 233280;
+    return s / 233280;
+  };
+
+  gfx.fillStyle(color, 1);
+  for (let x = -pixel; x < width + pixel; x += pixel * 2) {
+    const h = pixel * (1 + Math.floor(rand() * 5));
+    const w = pixel * (1 + Math.floor(rand() * 2));
+    const y = Math.floor((baseY - h + rand() * pixel * 2) / pixel) * pixel;
+    gfx.fillRect(x, y, w, h);
   }
 }
 
@@ -310,8 +486,8 @@ export function createForestParticles(
     gfx.destroy();
   }
 
-  const forestTop = height * 0.66;
-  const forestBottom = height * 0.78;
+  const forestTop = height * 0.72;
+  const forestBottom = height * 0.88;
 
   const emitter = scene.add.particles(0, 0, key, {
     x: { min: 0, max: width },

@@ -39,14 +39,6 @@ const OBJECT_COLORS: Record<string, number> = {
   bush: 0x90ee90,
 };
 
-const CLASS_ABBR: Record<string, string> = {
-  warrior: "G",
-  mage: "M",
-  cleric: "C",
-  archer: "A",
-  assassin: "As",
-};
-
 const CLASS_DISPLAY: Record<string, string> = {
   warrior: "Guerreiro",
   mage: "Mago",
@@ -55,10 +47,21 @@ const CLASS_DISPLAY: Record<string, string> = {
   assassin: "Assassino",
 };
 
+const CLASS_FRAME_ROW: Record<string, number> = {
+  warrior: 0,
+  mage: 1,
+  cleric: 2,
+  archer: 3,
+  assassin: 4,
+};
+
+const CLASS_IDLE_FRAMES = 4;
+
 interface CharacterEntry {
   data: CharacterOut;
   sprite: Phaser.GameObjects.Container;
   circle: Phaser.GameObjects.Arc;
+  body: Phaser.GameObjects.Sprite;
   status: "active" | "knocked_out" | "dead";
 }
 
@@ -93,6 +96,7 @@ export default class BattleScene extends Phaser.Scene {
   private detailPanel!: CharacterDetailPanel;
   private detailPanelEntityId: string | null = null;
   private activeEffects: Map<string, Set<string>> = new Map();
+  private activePortraitObjects: Phaser.GameObjects.GameObject[] = [];
   private lastHoverTile: { x: number; y: number } | null = null;
   private autoBattle = false;
   private destroyed = false;
@@ -115,6 +119,7 @@ export default class BattleScene extends Phaser.Scene {
     this.wsQueue = [];
     this.playerCooldowns = new Map();
     this.activeEffects = new Map();
+    this.activePortraitObjects = [];
     this.selectedAbility = null;
     this.currentPA = 4;
     this.currentCharacter = "";
@@ -132,6 +137,14 @@ export default class BattleScene extends Phaser.Scene {
       frameWidth: 16,
       frameHeight: 16,
     });
+    this.load.spritesheet(
+      "combatants",
+      "assets/spritesheets/combatants2-game.png",
+      {
+        frameWidth: 64,
+        frameHeight: 64,
+      },
+    );
   }
 
   create() {
@@ -152,7 +165,9 @@ export default class BattleScene extends Phaser.Scene {
     decorTex.add("rock", 0, 96, 176, 32, 32);
 
     loadAbilityIcons(this);
+    this.createClassAnimations();
     this.renderGrid();
+    this.createAmbientParticles();
     this.renderMapObjects();
     this.renderCharacters();
     this.createTurnIndicator();
@@ -250,6 +265,27 @@ export default class BattleScene extends Phaser.Scene {
     }
   }
 
+  private createClassAnimations() {
+    for (const [classId, row] of Object.entries(CLASS_FRAME_ROW)) {
+      const key = `${classId}_idle`;
+      if (this.anims.exists(key)) continue;
+      const baseFrame = row * CLASS_IDLE_FRAMES;
+      this.anims.create({
+        key,
+        frames: [
+          { key: "combatants", frame: baseFrame },
+          { key: "combatants", frame: baseFrame + 1 },
+          { key: "combatants", frame: baseFrame + 2 },
+          { key: "combatants", frame: baseFrame + 1 },
+          { key: "combatants", frame: baseFrame + 3 },
+          { key: "combatants", frame: baseFrame + 1 },
+        ],
+        frameRate: 5,
+        repeat: -1,
+      });
+    }
+  }
+
   private renderGrid() {
     const S = 7;
     const DIRT = 4 * S + 4;
@@ -317,6 +353,66 @@ export default class BattleScene extends Phaser.Scene {
         GRID_OFFSET_X + GRID_COLS * TILE_SIZE,
         ly,
       );
+    }
+  }
+
+  private createAmbientParticles() {
+    this.createAmbientParticleTextures();
+
+    const boardLeft = GRID_OFFSET_X - 90;
+    const boardRight = GRID_OFFSET_X + GRID_COLS * TILE_SIZE + 90;
+    const boardTop = GRID_OFFSET_Y - 30;
+    const boardBottom = GRID_OFFSET_Y + GRID_ROWS * TILE_SIZE + 60;
+
+    const dust = this.add.particles(0, 0, "arena_dust", {
+      x: { min: boardLeft, max: boardRight },
+      y: { min: boardTop, max: boardBottom },
+      lifespan: { min: 1800, max: 4200 },
+      speedX: { min: 8, max: 28 },
+      speedY: { min: -8, max: 8 },
+      alpha: { start: 0.18, end: 0 },
+      scale: { min: 0.5, max: 1.4 },
+      rotate: { min: 0, max: 180 },
+      frequency: 95,
+      blendMode: "NORMAL",
+    });
+    dust.setDepth(5);
+
+    const leaves = this.add.particles(0, 0, "arena_leaf", {
+      x: { min: boardLeft - 120, max: boardLeft - 20 },
+      y: { min: boardTop, max: boardBottom },
+      lifespan: { min: 5200, max: 8600 },
+      speedX: { min: 42, max: 76 },
+      speedY: { min: -18, max: 22 },
+      accelerationY: { min: -4, max: 8 },
+      alpha: { start: 0, end: 0.42 },
+      scale: { min: 0.65, max: 1.15 },
+      rotate: { min: -160, max: 160 },
+      frequency: 700,
+      blendMode: "NORMAL",
+    });
+    leaves.setDepth(9);
+  }
+
+  private createAmbientParticleTextures() {
+    if (!this.textures.exists("arena_dust")) {
+      const dust = this.add.graphics();
+      dust.fillStyle(0xf0c28a, 0.65);
+      dust.fillRect(0, 0, 2, 2);
+      dust.generateTexture("arena_dust", 2, 2);
+      dust.destroy();
+    }
+
+    if (!this.textures.exists("arena_leaf")) {
+      const leaf = this.add.graphics();
+      leaf.fillStyle(0x2f9b53, 1);
+      leaf.fillRect(2, 0, 3, 2);
+      leaf.fillRect(0, 2, 7, 3);
+      leaf.fillRect(2, 5, 3, 2);
+      leaf.fillStyle(0x195f35, 1);
+      leaf.fillRect(3, 2, 1, 4);
+      leaf.generateTexture("arena_leaf", 7, 7);
+      leaf.destroy();
     }
   }
 
@@ -408,21 +504,20 @@ export default class BattleScene extends Phaser.Scene {
     for (const char of this.initialState.characters) {
       const { px, py } = this.gridToPixel(char.position.x, char.position.y);
       const teamColor = char.team === "player" ? 0x4488ff : 0xff4444;
-      const circle = this.add.circle(0, 0, 24, teamColor);
-      const abbr = CLASS_ABBR[char.class_id] ?? "?";
-      const label = this.add
-        .text(0, 0, abbr, {
-          fontSize: "16px",
-          color: "#ffffff",
-          fontFamily: "monospace",
-          fontStyle: "bold",
-        })
-        .setOrigin(0.5);
-      const container = this.add.container(px, py, [circle, label]);
+      const shadow = this.add.ellipse(0, 18, 42, 16, 0x000000, 0.25);
+      const circle = this.add.circle(0, 9, 25, teamColor, 0.28);
+      circle.setStrokeStyle(2, teamColor, 0.7);
+      const frame = (CLASS_FRAME_ROW[char.class_id] ?? 0) * CLASS_IDLE_FRAMES;
+      const body = this.add.sprite(0, -4, "combatants", frame);
+      body.play(`${char.class_id}_idle`, true);
+      if (char.team !== "player") {
+        body.setTint(0xffdddd);
+      }
+      const container = this.add.container(px, py, [shadow, circle, body]);
       container.setDepth(10);
-      container.setSize(48, 48);
+      container.setSize(56, 56);
       container.setInteractive(
-        new Phaser.Geom.Circle(0, 0, 24),
+        new Phaser.Geom.Circle(0, 0, 28),
         Phaser.Geom.Circle.Contains,
       );
       container.on(
@@ -441,13 +536,14 @@ export default class BattleScene extends Phaser.Scene {
         data: { ...char },
         sprite: container,
         circle,
+        body,
         status: "active",
       });
     }
   }
 
   private createTurnIndicator() {
-    drawPanel(this, 16, 10, 290, 78, {
+    drawPanel(this, 16, 10, 330, 78, {
       fill: 0x14142a,
       fillAlpha: 0.85,
       border: 0x333366,
@@ -535,6 +631,7 @@ export default class BattleScene extends Phaser.Scene {
       )
       .setColor(color);
     this.errorText.setText("");
+    this.renderActivePortrait(charEntry);
 
     if (charEntry) {
       const { px, py } = this.gridToPixel(
@@ -543,6 +640,35 @@ export default class BattleScene extends Phaser.Scene {
       );
       this.activeMarker.show(px, py, charEntry.data.team);
     }
+  }
+
+  private renderActivePortrait(charEntry: CharacterEntry | undefined) {
+    for (const obj of this.activePortraitObjects) {
+      obj.destroy();
+    }
+    this.activePortraitObjects = [];
+    if (!charEntry) return;
+
+    const teamColor = charEntry.data.team === "player" ? 0x4488ff : 0xff4444;
+    const frame =
+      (CLASS_FRAME_ROW[charEntry.data.class_id] ?? 0) * CLASS_IDLE_FRAMES;
+
+    const glow = this.add.circle(306, 49, 25, teamColor, 0.18);
+    glow.setDepth(100);
+    const ring = this.add.circle(306, 49, 25, teamColor, 0);
+    ring.setStrokeStyle(2, teamColor, 0.75);
+    ring.setDepth(101);
+    const shadow = this.add.ellipse(306, 66, 44, 13, 0x000000, 0.3);
+    shadow.setDepth(101);
+    const portrait = this.add.sprite(306, 43, "combatants", frame);
+    portrait.setScale(0.8);
+    portrait.play(`${charEntry.data.class_id}_idle`, true);
+    portrait.setDepth(102);
+    if (charEntry.data.team !== "player") {
+      portrait.setTint(0xffdddd);
+    }
+
+    this.activePortraitObjects.push(glow, ring, shadow, portrait);
   }
 
   // --- WS Handlers ---
@@ -858,16 +984,16 @@ export default class BattleScene extends Phaser.Scene {
     for (const [id, entry] of this.characters) {
       if (entry.status === "dead") {
         entry.sprite.setAlpha(0.25);
-        entry.circle.setFillStyle(0x555555);
+        entry.circle.setFillStyle(0x555555, 0.25);
         continue;
       }
       if (entry.status === "knocked_out") {
         entry.sprite.setAlpha(0.5);
-        entry.circle.setFillStyle(0x888888);
+        entry.circle.setFillStyle(0x888888, 0.28);
       } else {
         entry.sprite.setAlpha(1);
         const teamColor = entry.data.team === "player" ? 0x4488ff : 0xff4444;
-        entry.circle.setFillStyle(teamColor);
+        entry.circle.setFillStyle(teamColor, 0.28);
       }
       const { px, py } = this.gridToPixel(
         entry.data.position.x,

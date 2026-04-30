@@ -27,6 +27,43 @@ const CLASS_DISPLAY: Record<string, string> = {
   assassin: "Assassino",
 };
 
+const CLASS_FRAME_ROW: Record<string, number> = {
+  warrior: 0,
+  mage: 1,
+  cleric: 2,
+  archer: 3,
+  assassin: 4,
+};
+
+const CLASS_IDLE_FRAMES = 4;
+
+const CLASS_META: Record<
+  string,
+  { role: string; accent: number; accentText: string }
+> = {
+  warrior: {
+    role: "Tanque corpo a corpo",
+    accent: 0x4f8fd6,
+    accentText: "#74b5ff",
+  },
+  mage: { role: "Dano magico", accent: 0x8b68e8, accentText: "#b99cff" },
+  cleric: {
+    role: "Cura e protecao",
+    accent: 0x72d798,
+    accentText: "#9cffc0",
+  },
+  archer: {
+    role: "Alcance preciso",
+    accent: 0x72b56b,
+    accentText: "#a7df8a",
+  },
+  assassin: {
+    role: "Mobilidade e burst",
+    accent: 0xb35687,
+    accentText: "#ff8fbd",
+  },
+};
+
 const ATTR_KEYS = ["str", "dex", "con", "int_", "wis"] as const;
 
 const ATTR_LABELS: Record<string, string> = {
@@ -74,6 +111,17 @@ export default class PreparationScene extends Phaser.Scene {
     super("PreparationScene");
   }
 
+  preload() {
+    this.load.spritesheet(
+      "combatants",
+      "assets/spritesheets/combatants2-game.png",
+      {
+        frameWidth: 64,
+        frameHeight: 64,
+      },
+    );
+  }
+
   create() {
     const data = this.scene.settings.data as { difficulty?: string };
     if (data?.difficulty) this.difficulty = data.difficulty;
@@ -101,6 +149,7 @@ export default class PreparationScene extends Phaser.Scene {
         loadingText.destroy();
         this.classesInfo = response.classes;
         this.defaultBuilds = response.default_builds;
+        this.createClassAnimations();
         this.renderUI();
       })
       .catch((err) => {
@@ -177,28 +226,89 @@ export default class PreparationScene extends Phaser.Scene {
     this.classPanelObjects.push(titleLine);
 
     const classIds = ["warrior", "mage", "cleric", "archer", "assassin"];
-    const startY = 110;
+    const startY = 106;
 
     classIds.forEach((classId, i) => {
       const inTeam = this.teamMembers.some((m) => m.classId === classId);
       const teamFull = this.teamMembers.length >= 3;
       const disabled = inTeam || teamFull;
+      const y = startY + i * 42;
+      const meta = CLASS_META[classId];
+      const accent = meta?.accent ?? 0x44aaff;
 
-      const btn = this.add
-        .text(30, startY + i * 40, CLASS_DISPLAY[classId], {
-          fontSize: "18px",
-          color: disabled ? "#555555" : "#44aaff",
+      const bg = this.add.graphics();
+      bg.fillStyle(disabled ? 0x10101d : 0x1b1b33, disabled ? 0.45 : 0.92);
+      bg.fillRoundedRect(0, 0, 204, 36, 6);
+      bg.lineStyle(1, disabled ? 0x2a2a44 : accent, disabled ? 0.35 : 0.65);
+      bg.strokeRoundedRect(0, 0, 204, 36, 6);
+
+      const stripe = this.add.rectangle(
+        4,
+        18,
+        4,
+        24,
+        accent,
+        disabled ? 0.2 : 0.75,
+      );
+      const frame = (CLASS_FRAME_ROW[classId] ?? 0) * CLASS_IDLE_FRAMES;
+      const sprite = this.add.sprite(25, 18, "combatants", frame);
+      sprite.setScale(0.5);
+      sprite.setAlpha(disabled ? 0.35 : 1);
+
+      const name = this.add.text(48, 5, CLASS_DISPLAY[classId], {
+        fontSize: "14px",
+        color: disabled ? "#555555" : "#eeeeff",
+        fontFamily: FONT,
+      });
+      const role = this.add.text(48, 20, meta?.role ?? "", {
+        fontSize: "9px",
+        color: disabled ? "#444455" : (meta?.accentText ?? "#88ccff"),
+        fontFamily: FONT,
+      });
+
+      const state = this.add
+        .text(190, 9, inTeam ? "OK" : teamFull ? "--" : "+", {
+          fontSize: "14px",
+          color: disabled ? "#555555" : "#ffd700",
           fontFamily: FONT,
+          fontStyle: "bold",
         })
-        .setInteractive({ useHandCursor: !disabled });
+        .setOrigin(0.5, 0);
+
+      const hitZone = this.add.rectangle(102, 18, 204, 36, 0x000000, 0.001);
+      hitZone.setInteractive({ useHandCursor: !disabled });
+
+      const card = this.add.container(22, y, [
+        bg,
+        stripe,
+        sprite,
+        name,
+        role,
+        state,
+        hitZone,
+      ]);
 
       if (!disabled) {
-        btn.on("pointerover", () => btn.setColor("#88ccff"));
-        btn.on("pointerout", () => btn.setColor("#44aaff"));
-        btn.on("pointerdown", () => this.addClassToTeam(classId));
+        hitZone.on("pointerover", () => {
+          bg.clear();
+          bg.fillStyle(0x242448, 0.98);
+          bg.fillRoundedRect(0, 0, 204, 36, 6);
+          bg.lineStyle(1.5, accent, 0.95);
+          bg.strokeRoundedRect(0, 0, 204, 36, 6);
+          name.setColor("#ffffff");
+        });
+        hitZone.on("pointerout", () => {
+          bg.clear();
+          bg.fillStyle(0x1b1b33, 0.92);
+          bg.fillRoundedRect(0, 0, 204, 36, 6);
+          bg.lineStyle(1, accent, 0.65);
+          bg.strokeRoundedRect(0, 0, 204, 36, 6);
+          name.setColor("#eeeeff");
+        });
+        hitZone.on("pointerdown", () => this.addClassToTeam(classId));
       }
 
-      this.classPanelObjects.push(btn);
+      this.classPanelObjects.push(card);
     });
   }
 
@@ -228,9 +338,26 @@ export default class PreparationScene extends Phaser.Scene {
     this.teamMembers.forEach((member, i) => {
       const y = headerY + 35 + i * 35;
       const isSelected = i === this.selectedMemberIndex;
+      const meta = CLASS_META[member.classId];
+      const accent = meta?.accent ?? 0x8888cc;
 
+      const bg = this.add.rectangle(
+        122,
+        y + 10,
+        196,
+        28,
+        isSelected ? 0x2a2940 : 0x151528,
+        isSelected ? 0.85 : 0.45,
+      );
+      bg.setStrokeStyle(1, accent, isSelected ? 0.75 : 0.25);
+      bg.setInteractive({ useHandCursor: true });
+      bg.on("pointerdown", () => this.selectMember(i));
+
+      const frame = (CLASS_FRAME_ROW[member.classId] ?? 0) * CLASS_IDLE_FRAMES;
+      const sprite = this.add.sprite(42, y + 10, "combatants", frame);
+      sprite.setScale(0.36);
       const nameBtn = this.add
-        .text(30, y, CLASS_DISPLAY[member.classId], {
+        .text(62, y + 1, CLASS_DISPLAY[member.classId], {
           fontSize: "16px",
           color: isSelected ? "#ffd700" : "#cccccc",
           fontFamily: FONT,
@@ -257,7 +384,7 @@ export default class PreparationScene extends Phaser.Scene {
       removeBtn.on("pointerout", () => removeBtn.setColor("#ff4444"));
       removeBtn.on("pointerdown", () => this.removeMember(i));
 
-      this.teamListObjects.push(nameBtn, removeBtn);
+      this.teamListObjects.push(bg, sprite, nameBtn, removeBtn);
     });
   }
 
@@ -295,7 +422,84 @@ export default class PreparationScene extends Phaser.Scene {
     this.buildPanelObjects.push(className);
 
     this.renderAttributes(panelX, 110, classInfo, member);
+    this.renderCharacterPreview(panelX, 80, panelW, member.classId);
     this.renderAbilities(panelX, 340, classInfo, member, panelW);
+  }
+
+  private createClassAnimations() {
+    for (const [classId, row] of Object.entries(CLASS_FRAME_ROW)) {
+      const key = `${classId}_idle`;
+      if (this.anims.exists(key)) continue;
+      const baseFrame = row * CLASS_IDLE_FRAMES;
+      this.anims.create({
+        key,
+        frames: [
+          { key: "combatants", frame: baseFrame },
+          { key: "combatants", frame: baseFrame + 1 },
+          { key: "combatants", frame: baseFrame + 2 },
+          { key: "combatants", frame: baseFrame + 1 },
+          { key: "combatants", frame: baseFrame + 3 },
+          { key: "combatants", frame: baseFrame + 1 },
+        ],
+        frameRate: 5,
+        repeat: -1,
+      });
+    }
+  }
+
+  private renderCharacterPreview(
+    panelX: number,
+    topY: number,
+    panelW: number,
+    classId: string,
+  ) {
+    const boxW = 142;
+    const boxH = 150;
+    const boxX = panelX + panelW - boxW - 26;
+    const boxY = topY;
+    const frame = (CLASS_FRAME_ROW[classId] ?? 0) * CLASS_IDLE_FRAMES;
+
+    const bg = drawPanel(this, boxX, boxY, boxW, boxH, {
+      fill: 0x0d0d1d,
+      fillAlpha: 0.52,
+      border: CLASS_META[classId]?.accent ?? 0x3f3f74,
+      borderAlpha: 0.72,
+      radius: 6,
+    });
+
+    const glow = this.add.circle(
+      boxX + boxW / 2,
+      boxY + 88,
+      45,
+      CLASS_META[classId]?.accent ?? 0xffd36b,
+      0.12,
+    );
+    const shadow = this.add.ellipse(
+      boxX + boxW / 2,
+      boxY + 118,
+      78,
+      24,
+      0x000000,
+      0.28,
+    );
+    const sprite = this.add.sprite(
+      boxX + boxW / 2,
+      boxY + 73,
+      "combatants",
+      frame,
+    );
+    sprite.setScale(1.75);
+    sprite.play(`${classId}_idle`, true);
+
+    const label = this.add
+      .text(boxX + boxW / 2, boxY + boxH - 22, CLASS_DISPLAY[classId], {
+        fontSize: "13px",
+        color: CLASS_META[classId]?.accentText ?? "#d8d8ff",
+        fontFamily: FONT,
+      })
+      .setOrigin(0.5);
+
+    this.buildPanelObjects.push(bg, glow, shadow, sprite, label);
   }
 
   private renderAttributes(
