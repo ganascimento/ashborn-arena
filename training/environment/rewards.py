@@ -9,16 +9,20 @@ if TYPE_CHECKING:
 
 REWARD_VICTORY = 10.0
 REWARD_DEFEAT = -10.0
-REWARD_KILL = 3.0
+REWARD_KILL = 6.0
 REWARD_KNOCKDOWN = 1.0
 REWARD_ALLY_DEAD = -2.0
 REWARD_DAMAGE_PCT = 2.0
-REWARD_HEAL_PCT = 2.0
+REWARD_HEAL_SELF_PCT = 0.8
+REWARD_HEAL_ALLY_PCT = 3.0
 REWARD_COMBO = 0.5
-REWARD_TIME_PENALTY = -0.01
+REWARD_TIME_PENALTY = -0.04
 REWARD_APPROACH_MELEE = 0.15
-REWARD_SAVE_ALLY = 2.0
+REWARD_FOLLOWUP_MELEE = 0.4
+REWARD_SAVE_ALLY = 4.0
 REWARD_FRIENDLY_FIRE = -4.0
+REWARD_SELFISH_HEAL = -1.5
+SELFISH_HEAL_HP_GAP = 0.2
 
 MELEE_CLASSES = frozenset({"warrior", "assassin"})
 
@@ -49,6 +53,35 @@ def _missing_hp_pct_before_heal(
     hp_before = hp_after - applied_heal
     missing_before = max_hp - hp_before
     return min(max(missing_before / max_hp, 0.0), 1.0)
+
+
+def _hp_pct(battle_state: "BattleState | None", entity_id: str) -> float:
+    max_hp = _max_hp(battle_state, entity_id)
+    return min(max(_current_hp(battle_state, entity_id) / max_hp, 0.0), 1.0)
+
+
+def _lowest_ally_hp_pct(
+    battle_state: "BattleState | None",
+    healer_id: str,
+    healer_team: str,
+    all_agents: dict[str, str],
+) -> float | None:
+    if battle_state is None:
+        return None
+    lowest: float | None = None
+    for eid, team in all_agents.items():
+        if eid == healer_id or team != healer_team:
+            continue
+        try:
+            char = battle_state.get_character(eid)
+        except KeyError:
+            continue
+        if char.state == CharacterState.DEAD:
+            continue
+        pct = _hp_pct(battle_state, eid)
+        if lowest is None or pct < lowest:
+            lowest = pct
+    return lowest
 
 
 def compute_rewards(
@@ -85,6 +118,26 @@ def compute_rewards(
                     rewards[attacker] += pct * REWARD_FRIENDLY_FIRE
                 else:
                     rewards[attacker] += pct * REWARD_DAMAGE_PCT
+                    if (
+                        etype in ("basic_attack", "ability")
+                        and battle_state is not None
+                    ):
+                        try:
+                            atk_class = battle_state.get_character(
+                                attacker
+                            ).character_class.value
+                        except (KeyError, AttributeError):
+                            atk_class = ""
+                        if atk_class in MELEE_CLASSES:
+                            try:
+                                ability = event.get("ability_id", "")
+                                ap = battle_state.get_position(attacker)
+                                tp = battle_state.get_position(target)
+                                dist = max(abs(ap.x - tp.x), abs(ap.y - tp.y))
+                            except (KeyError, AttributeError):
+                                dist = 99
+                            if dist <= 1:
+                                rewards[attacker] += REWARD_FOLLOWUP_MELEE
 
         elif etype == "reflect":
             damage = event.get("damage", 0)
@@ -105,9 +158,24 @@ def compute_rewards(
                 missing_pct = _missing_hp_pct_before_heal(
                     battle_state, target, amount
                 )
-                rewards[healer] += pct * REWARD_HEAL_PCT * missing_pct
-                if target != healer and missing_pct > 0:
-                    rewards[healer] += missing_pct ** 2 * REWARD_SAVE_ALLY
+                if target == healer:
+                    rewards[healer] += pct * REWARD_HEAL_SELF_PCT * missing_pct
+                    healer_team = all_agents.get(healer, "")
+                    healer_pct = _hp_pct(battle_state, healer)
+                    lowest_ally = _lowest_ally_hp_pct(
+                        battle_state, healer, healer_team, all_agents
+                    )
+                    if (
+                        lowest_ally is not None
+                        and healer_pct - lowest_ally > SELFISH_HEAL_HP_GAP
+                    ):
+                        rewards[healer] += REWARD_SELFISH_HEAL * pct
+                else:
+                    rewards[healer] += pct * REWARD_HEAL_ALLY_PCT * (
+                        missing_pct ** 1.5
+                    )
+                    if missing_pct > 0:
+                        rewards[healer] += missing_pct ** 2 * REWARD_SAVE_ALLY
 
         elif etype == "hot_tick":
             heal = event.get("heal", 0)
@@ -120,7 +188,7 @@ def compute_rewards(
                 )
                 for eid, team in all_agents.items():
                     if team == all_agents.get(entity, ""):
-                        rewards[eid] += pct * REWARD_HEAL_PCT * missing_pct * 0.5
+                        rewards[eid] += pct * REWARD_HEAL_ALLY_PCT * missing_pct * 0.5
 
         elif etype == "knocked_out":
             entity = event.get("entity", "")

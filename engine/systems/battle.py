@@ -79,7 +79,7 @@ _DEFAULT_ABILITIES: dict[CharacterClass, list[str]] = {
         "lamina_oculta",
         "passo_sombrio",
         "danca_das_laminas",
-        "tiro_certeiro",
+        "marca_da_morte",
         "corte_profundo",
     ],
 }

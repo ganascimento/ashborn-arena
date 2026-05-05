@@ -248,7 +248,7 @@ class TestSharedChamaSagrada:
 
     def test_cost(self, ability):
         assert ability.pa_cost == 2
-        assert ability.cooldown == 2
+        assert ability.cooldown == 3
 
     def test_damage(self, ability):
         assert ability.damage_base == 8
@@ -256,8 +256,8 @@ class TestSharedChamaSagrada:
         assert ability.damage_type == "magical"
 
     def test_self_heal(self, ability):
-        assert ability.self_heal_base == 4
-        assert ability.self_heal_scaling == pytest.approx(0.3)
+        assert ability.self_heal_base == 2
+        assert ability.self_heal_scaling == pytest.approx(0.2)
 
     def test_elemental(self, ability):
         assert ability.elemental_tag == "fire"
@@ -273,7 +273,7 @@ class TestSharedBarreiraArcana:
 
     def test_cost(self, ability):
         assert ability.pa_cost == 1
-        assert ability.cooldown == 3
+        assert ability.cooldown == 2
 
     def test_shield(self, ability):
         assert ability.shield_absorb_base == 8
@@ -465,7 +465,8 @@ class TestClerigoExclusives:
     def test_toque_da_aurora(self):
         a = ABILITIES["toque_da_aurora"]
         assert a.pa_cost == 2
-        assert a.cooldown == 1
+        assert a.cooldown == 2
+        assert a.max_range == 3
         assert a.heal_base == 10
         assert a.heal_scaling == pytest.approx(1.5)
         assert a.heal_attr == "wis"
@@ -476,9 +477,9 @@ class TestClerigoExclusives:
         assert a.cooldown == 4
         hot = [e for e in a.effects if e.effect_type == EffectType.HOT]
         assert len(hot) == 1
-        assert hot[0].value == pytest.approx(5.0)
+        assert hot[0].value == pytest.approx(7.0)
         assert hot[0].duration == 3
-        assert a.aoe_radius == 1
+        assert a.aoe_radius == 2
 
     def test_expurgo(self):
         a = ABILITIES["expurgo"]
@@ -573,7 +574,7 @@ class TestArqueiroExclusives:
 class TestAssassinoExclusives:
     def test_lamina_oculta(self):
         a = ABILITIES["lamina_oculta"]
-        assert a.pa_cost == 2
+        assert a.pa_cost == 1
         assert a.cooldown == 1
         assert a.damage_base == 7
         assert a.damage_scaling == pytest.approx(1.0)
