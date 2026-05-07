@@ -13,18 +13,29 @@ REWARD_KILL = 6.0
 REWARD_KNOCKDOWN = 1.0
 REWARD_ALLY_DEAD = -2.0
 REWARD_DAMAGE_PCT = 2.0
-REWARD_HEAL_SELF_PCT = 0.8
-REWARD_HEAL_ALLY_PCT = 3.0
+REWARD_HEAL_SELF_PCT = 1.5
+REWARD_HEAL_ALLY_PCT = 5.0
 REWARD_COMBO = 0.5
-REWARD_TIME_PENALTY = -0.04
+REWARD_TIME_PENALTY = -0.05
 REWARD_APPROACH_MELEE = 0.15
+REWARD_APPROACH_RANGED = 0.10
 REWARD_FOLLOWUP_MELEE = 0.4
-REWARD_SAVE_ALLY = 4.0
-REWARD_FRIENDLY_FIRE = -4.0
+REWARD_SAVE_ALLY = 6.0
+REWARD_FRIENDLY_FIRE = -10.0
 REWARD_SELFISH_HEAL = -1.5
-SELFISH_HEAL_HP_GAP = 0.2
+REWARD_NEGLECT_ALLY = -3.0
+REWARD_WASTED_HEAL = -1.0
+ALLY_CRITICAL_HP = 0.5
+SELF_HEALTHY_HP = 0.75
+REWARD_OFFENSIVE_HIT = 0.2
+REWARD_IDLE_END_TURN = -0.5
+REWARD_LOOP_MOVE = -0.5
+SELFISH_HEAL_HP_GAP = 0.15
+WASTED_HEAL_HP_PCT = 0.9
+LOOP_HISTORY_LEN = 3
 
 MELEE_CLASSES = frozenset({"warrior", "assassin"})
+RANGED_APPROACH_CLASSES = frozenset({"warrior", "assassin", "mage", "archer"})
 
 
 def _max_hp(battle_state: "BattleState | None", entity_id: str) -> int:
@@ -159,23 +170,35 @@ def compute_rewards(
                     battle_state, target, amount
                 )
                 if target == healer:
-                    rewards[healer] += pct * REWARD_HEAL_SELF_PCT * missing_pct
+                    rewards[healer] += (
+                        pct * REWARD_HEAL_SELF_PCT * (missing_pct ** 3)
+                    )
                     healer_team = all_agents.get(healer, "")
                     healer_pct = _hp_pct(battle_state, healer)
                     lowest_ally = _lowest_ally_hp_pct(
                         battle_state, healer, healer_team, all_agents
                     )
-                    if (
-                        lowest_ally is not None
-                        and healer_pct - lowest_ally > SELFISH_HEAL_HP_GAP
-                    ):
-                        rewards[healer] += REWARD_SELFISH_HEAL * pct
+                    if lowest_ally is not None:
+                        if (
+                            lowest_ally < ALLY_CRITICAL_HP
+                            and healer_pct > SELF_HEALTHY_HP
+                        ):
+                            rewards[healer] += REWARD_NEGLECT_ALLY * pct
+                        elif healer_pct - lowest_ally > SELFISH_HEAL_HP_GAP:
+                            rewards[healer] += REWARD_SELFISH_HEAL * pct
                 else:
                     rewards[healer] += pct * REWARD_HEAL_ALLY_PCT * (
-                        missing_pct ** 1.5
+                        missing_pct ** 2
                     )
                     if missing_pct > 0:
                         rewards[healer] += missing_pct ** 2 * REWARD_SAVE_ALLY
+                    target_max_hp = _max_hp(battle_state, target)
+                    hp_after = _current_hp(battle_state, target)
+                    hp_before_pct = max(
+                        0.0, (hp_after - amount) / max(target_max_hp, 1)
+                    )
+                    if hp_before_pct >= WASTED_HEAL_HP_PCT:
+                        rewards[healer] += REWARD_WASTED_HEAL
 
         elif etype == "hot_tick":
             heal = event.get("heal", 0)
@@ -222,8 +245,12 @@ def compute_rewards(
                 char_class = battle_state.get_character(entity).character_class.value
             except (KeyError, AttributeError):
                 continue
-            if char_class not in MELEE_CLASSES:
+            if char_class not in RANGED_APPROACH_CLASSES:
                 continue
+            try:
+                attack_range = battle_state.get_basic_attack(entity).max_range
+            except (KeyError, AttributeError):
+                attack_range = 1
             entity_team = all_agents.get(entity, "")
             min_old: int | None = None
             min_new: int | None = None
@@ -246,8 +273,14 @@ def compute_rewards(
                     min_old = old_d
                 if min_new is None or new_d < min_new:
                     min_new = new_d
-            if min_old is not None and min_new is not None:
-                rewards[entity] += (min_old - min_new) * REWARD_APPROACH_MELEE
+            if min_old is not None and min_new is not None and min_old > attack_range:
+                weight = (
+                    REWARD_APPROACH_MELEE
+                    if char_class in MELEE_CLASSES
+                    else REWARD_APPROACH_RANGED
+                )
+                effective_new = max(min_new, attack_range)
+                rewards[entity] += (min_old - effective_new) * weight
 
     return rewards
 

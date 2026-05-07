@@ -19,6 +19,10 @@ from training.environment.actions import (
 )
 from training.environment.observations import OBS_TOTAL_SIZE, encode_observation
 from training.environment.rewards import (
+    LOOP_HISTORY_LEN,
+    REWARD_IDLE_END_TURN,
+    REWARD_LOOP_MOVE,
+    REWARD_OFFENSIVE_HIT,
     REWARD_TIME_PENALTY,
     apply_terminal_rewards,
     compute_rewards,
@@ -47,6 +51,7 @@ class ArenaEnv(AECEnv):
         self.infos: dict[str, dict] = {}
         self._cumulative_rewards: dict[str, float] = {}
         self.agent_selection: str = ""
+        self._move_history: dict[str, list[tuple[int, int]]] = {}
 
     @functools.lru_cache(maxsize=None)
     def observation_space(self, agent: str) -> gymnasium.spaces.Space:
@@ -95,6 +100,7 @@ class ArenaEnv(AECEnv):
         self.terminations = {a: False for a in self.agents}
         self.truncations = {a: False for a in self.agents}
         self.infos = {}
+        self._move_history = {a: [] for a in self.agents}
 
         self._battle.process_turn_start()
         self._advance_to_active_agent()
@@ -118,7 +124,68 @@ class ArenaEnv(AECEnv):
         action_type = int(action[0]) if action is not None else ActionType.END_TURN
         target = int(action[1]) if action is not None else 0
 
+        pre_action_mask = self.infos.get(agent, {}).get("action_mask")
+        pre_action_pa = self._battle.get_pa(agent)
+
         events = self._battle.execute_action(action_type, target)
+
+        loop_penalty = 0.0
+        for ev in events:
+            if ev.get("type") != "move" or ev.get("entity") != agent:
+                continue
+            to_pos = ev.get("to")
+            if to_pos is None:
+                continue
+            tile = (to_pos.x, to_pos.y)
+            history = self._move_history.setdefault(agent, [])
+            if tile in history:
+                loop_penalty += REWARD_LOOP_MOVE
+            history.append(tile)
+            if len(history) > LOOP_HISTORY_LEN:
+                history.pop(0)
+
+        offensive_bonus = 0.0
+        is_offensive_action = (
+            action_type == ActionType.BASIC_ATTACK
+            or ActionType.ABILITY_1 <= action_type <= ActionType.ABILITY_5
+            or action_type == ActionType.THROW
+        )
+        if is_offensive_action:
+            for ev in events:
+                etype = ev.get("type", "")
+                if etype not in (
+                    "basic_attack",
+                    "ability",
+                    "aoe_hit",
+                    "chain_primary",
+                    "chain_secondary",
+                ):
+                    continue
+                if ev.get("attacker") != agent:
+                    continue
+                if ev.get("damage", 0) <= 0:
+                    continue
+                tgt = ev.get("target", "")
+                if self._agent_teams.get(tgt, "") == self._agent_teams.get(agent, ""):
+                    continue
+                offensive_bonus = REWARD_OFFENSIVE_HIT
+                break
+
+        idle_penalty = 0.0
+        if action_type in (ActionType.END_TURN, ActionType.PASS):
+            if pre_action_pa >= 2 and pre_action_mask is not None:
+                tm = pre_action_mask.get("type_mask")
+                if tm is not None:
+                    has_offensive = bool(
+                        tm[ActionType.BASIC_ATTACK]
+                        or tm[ActionType.ABILITY_1]
+                        or tm[ActionType.ABILITY_2]
+                        or tm[ActionType.ABILITY_3]
+                        or tm[ActionType.ABILITY_4]
+                        or tm[ActionType.ABILITY_5]
+                    )
+                    if has_offensive:
+                        idle_penalty = REWARD_IDLE_END_TURN
 
         step_rewards = compute_rewards(
             events,
@@ -133,6 +200,9 @@ class ArenaEnv(AECEnv):
 
         if agent in self.rewards:
             self.rewards[agent] += REWARD_TIME_PENALTY
+            self.rewards[agent] += loop_penalty
+            self.rewards[agent] += offensive_bonus
+            self.rewards[agent] += idle_penalty
 
         winner = self._battle.check_victory()
         if winner:

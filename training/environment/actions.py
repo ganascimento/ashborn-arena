@@ -134,16 +134,72 @@ def compute_action_mask(battle_state: BattleState, agent_id: str) -> dict:
                 type_mask[action_idx] = True
                 target_mask[action_idx, _pos_to_idx(apos)] = True
         elif ability.target in (AbilityTarget.AOE, AbilityTarget.ADJACENT):
-            type_mask[action_idx] = True
+            radius = ability.aoe_radius if ability.aoe_radius > 0 else 1
+            allies = (
+                battle_state.team_a_entities
+                if team.value == "A"
+                else battle_state.team_b_entities
+            )
+            enemies = (
+                battle_state.team_b_entities
+                if team.value == "A"
+                else battle_state.team_a_entities
+            )
+            ally_positions = []
+            for eid in allies:
+                if eid == agent_id:
+                    continue
+                achar = battle_state.get_character(eid)
+                if achar.state == CharacterState.DEAD:
+                    continue
+                ally_positions.append(battle_state.get_position(eid))
+            enemy_positions = []
+            for eid in enemies:
+                echar = battle_state.get_character(eid)
+                if echar.state == CharacterState.DEAD:
+                    continue
+                if em.has_effect(eid, "untargetable"):
+                    continue
+                enemy_positions.append(battle_state.get_position(eid))
+
+            def _tile_is_safe(center: Position) -> bool:
+                hits_enemy = any(
+                    max(abs(ep.x - center.x), abs(ep.y - center.y)) <= radius
+                    for ep in enemy_positions
+                )
+                if not hits_enemy:
+                    return False
+                hits_ally = any(
+                    max(abs(ap.x - center.x), abs(ap.y - center.y)) <= radius
+                    for ap in ally_positions
+                )
+                if hits_ally and not ability.friendly_fire:
+                    return False
+                if hits_ally and ability.friendly_fire:
+                    enemy_hits = sum(
+                        1
+                        for ep in enemy_positions
+                        if max(abs(ep.x - center.x), abs(ep.y - center.y)) <= radius
+                    )
+                    if enemy_hits < 2:
+                        return False
+                return True
+
             if ability.target == AbilityTarget.ADJACENT:
-                target_mask[action_idx, _pos_to_idx(pos)] = True
+                if _tile_is_safe(pos):
+                    type_mask[action_idx] = True
+                    target_mask[action_idx, _pos_to_idx(pos)] = True
             else:
                 for row in range(8):
                     for col in range(10):
                         tile = Position(col, row)
                         dist = max(abs(tile.x - pos.x), abs(tile.y - pos.y))
-                        if dist <= ability.max_range:
-                            target_mask[action_idx, _pos_to_idx(tile)] = True
+                        if dist > ability.max_range:
+                            continue
+                        if not _tile_is_safe(tile):
+                            continue
+                        type_mask[action_idx] = True
+                        target_mask[action_idx, _pos_to_idx(tile)] = True
 
     has_other = bool(type_mask[: ActionType.END_TURN].any())
     if not has_other:
