@@ -21,18 +21,17 @@
 
 ## <img src="https://em-content.zobj.net/source/apple/391/film-projector_1f4fd-fe0f.png" width="20" /> Showcase
 
-<table>
-  <tr>
-    <td align="center" width="50%">
-      <img src="assets/interface.gif" alt="Interface walkthrough" width="100%" /><br/>
-      <sub><b>Interface</b> — menu, team builder and class selection</sub>
-    </td>
-    <td align="center" width="50%">
-      <img src="assets/game.gif" alt="AI vs AI battle" width="100%" /><br/>
-      <sub><b>Gameplay</b> — full AI vs AI battle on the tactical grid</sub>
-    </td>
-  </tr>
-</table>
+<div align="center">
+
+### <img src="https://em-content.zobj.net/source/apple/391/video-game_1f3ae.png" width="18" /> Gameplay — AI vs AI battle on the tactical grid
+
+![AI vs AI battle](assets/game.gif)
+
+### <img src="https://em-content.zobj.net/source/apple/391/desktop-computer_1f5a5-fe0f.png" width="18" /> Interface — menu, team builder and class selection
+
+![Interface walkthrough](assets/interface.gif)
+
+</div>
 
 ---
 
