@@ -4,9 +4,6 @@
 
 **Turn-based tactical RPG with multi-agent AI trained via reinforcement learning**
 
-<!-- TODO: replace with actual gameplay GIF -->
-<!-- ![Gameplay](docs/gameplay.gif) -->
-
 <br/>
 
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
@@ -15,11 +12,27 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5+-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://typescriptlang.org)
 [![Phaser](https://img.shields.io/badge/Phaser-3.80+-8B5CF6?style=flat-square&logoColor=white)](https://phaser.io)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white)]()
-[![Tests](https://img.shields.io/badge/Tests-878_passing-44cc11?style=flat-square&logo=testinglibrary&logoColor=white)]()
 [![Features](https://img.shields.io/badge/Features-29%2F29_done-44cc11?style=flat-square)]()
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
 </div>
+
+---
+
+## <img src="https://em-content.zobj.net/source/apple/391/film-projector_1f4fd-fe0f.png" width="20" /> Showcase
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="assets/interface.gif" alt="Interface walkthrough" width="100%" /><br/>
+      <sub><b>Interface</b> — menu, team builder and class selection</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="assets/game.gif" alt="AI vs AI battle" width="100%" /><br/>
+      <sub><b>Gameplay</b> — full AI vs AI battle on the tactical grid</sub>
+    </td>
+  </tr>
+</table>
 
 ---
 
@@ -64,14 +77,6 @@ The game features 5 unique classes, 47 abilities with elemental combos, destruct
 | <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg" width="16" /> **TypeScript** | Type-safe frontend code |
 | <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vitejs/vitejs-original.svg" width="16" /> **Vite** | Build tool and dev server |
 
-### <img src="https://em-content.zobj.net/source/apple/391/package_1f4e6.png" width="16" /> Infrastructure
-
-| Technology | Role |
-|---|---|
-| <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/docker/docker-original.svg" width="16" /> **Docker + Compose** | Containerized deployment (backend + frontend) |
-| <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/nginx/nginx-original.svg" width="16" /> **Nginx** | Static file serving for production frontend |
-| <img src="https://em-content.zobj.net/source/apple/391/floppy-disk_1f4be.png" width="16" /> **localStorage** | Client-side persistence (no database) |
-
 ---
 
 ## <img src="https://em-content.zobj.net/source/apple/391/brain_1f9e0.png" width="20" /> AI System — MAPPO
@@ -105,20 +110,20 @@ Phase 1 (1v1)  ──weights──▸  Phase 2 (2v2)  ──weights──▸  Ph
 
 | Phase | Composition | Episodes | Focus | Checkpoint |
 |:---:|---|:---:|---|:---:|
-| **1** | 1v1 (all classes) | 2,000 | Basic mechanics, abilities, positioning | `easy/` |
-| **2** | 2v2 | 2,000 | Team coordination, healer/tank roles | — |
-| **3** | 3v3 | 2,000 | Full coordination, combos, friendly fire | `normal/` |
-| **4** | Mixed (1v1, 2v2, 3v3) | 2,000 | Asymmetric adaptation | `hard/` |
+| **1** | 1v1 (all classes) | 20,000 | Basic mechanics, abilities, positioning | `easy/` |
+| **2** | 2v2 | 20,000 | Team coordination, healer/tank roles | — |
+| **3** | 3v3 | 20,000 | Full coordination, combos, friendly fire | `normal/` |
+| **4** | Mixed (1v1, 2v2, 3v3) | 20,000 | Asymmetric adaptation | `hard/` |
 
 ### <img src="https://em-content.zobj.net/source/apple/391/chart-increasing_1f4c8.png" width="16" /> Difficulty Levels
 
 Difficulty comes directly from different training checkpoints — **no artificial handicaps**:
 
 | Level | Source | Behavior |
-|---|---|---|
-| <img src="https://em-content.zobj.net/source/apple/391/green-circle_1f7e2.png" width="12" /> **Easy** | Phase 1 checkpoint | Plays individually, no team coordination |
-| <img src="https://em-content.zobj.net/source/apple/391/yellow-circle_1f7e1.png" width="12" /> **Normal** | Phase 3 checkpoint | Reasonable coordination, basic combos |
-| <img src="https://em-content.zobj.net/source/apple/391/red-circle_1f534.png" width="12" /> **Hard** | Phase 4 checkpoint | Exploits synergies, focuses priority targets |
+|:---:|---|---|
+| 🟢 **Easy** | Phase 1 checkpoint | Plays individually, no team coordination |
+| 🟡 **Normal** | Phase 3 checkpoint | Reasonable coordination, basic combos |
+| 🔴 **Hard** | Phase 4 checkpoint | Exploits synergies, focuses priority targets |
 
 ### <img src="https://em-content.zobj.net/source/apple/391/control-knobs_1f39b-fe0f.png" width="16" /> Training Hyperparameters
 
@@ -128,10 +133,12 @@ Difficulty comes directly from different training checkpoints — **no artificia
 | PPO clip range | `0.2` |
 | Discount (gamma) | `0.99` |
 | GAE lambda | `0.95` |
+| Entropy coefficient | `0.05` |
 | Batch size | `64` |
 | Epochs per update | `4` |
-| Self-play pool size | `10` |
-| Pool update interval | Every `50` episodes |
+| Update interval | Every `10` episodes |
+| Self-play pool size | `10` snapshots |
+| Pool refresh interval | Every `50` episodes |
 
 ---
 
@@ -333,100 +340,18 @@ All metrics use `episode` as the X axis, allowing direct alignment between train
 
 ---
 
-## <img src="https://em-content.zobj.net/source/apple/391/test-tube_1f9ea.png" width="20" /> Testing
-
-The project has **878 test cases** covering the game engine, backend API, training pipeline, and frontend.
-
-### <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/python/python-original.svg" width="14" /> Python tests (pytest) — 774 tests
-
-```bash
-source .venv/bin/activate
-
-# Run all tests
-pytest
-
-# Verbose output
-pytest -v
-
-# Specific module
-pytest engine/tests/test_combat.py
-```
-
-| Directory | Coverage |
-|---|---|
-| `engine/tests/` | Combat, movement, abilities, LoS, map generation, effects |
-| `backend/tests/` | API endpoints, schemas, sessions |
-| `training/tests/` | MAPPO agent, curriculum, self-play, PettingZoo environment |
-
-### <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vitejs/vitejs-original.svg" width="14" /> Frontend tests (vitest) — 104 tests
-
-```bash
-cd frontend
-
-# Run all tests once
-npx vitest run
-
-# Watch mode
-npm test
-
-# Specific file
-npx vitest run src/network/__tests__/ws-client.test.ts
-```
-
-### <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/typescript/typescript-original.svg" width="14" /> Type checking
-
-```bash
-cd frontend
-npx tsc --noEmit
-```
-
----
-
 ## <img src="https://em-content.zobj.net/source/apple/391/file-folder_1f4c1.png" width="20" /> Project Structure
 
 ```
 ashborn-arena/
-│
-├── engine/                  # Game engine — pure Python, no framework
-│   ├── models/              #   Domain models (Character, Ability, Map, Effect)
-│   ├── systems/             #   Combat, movement, LoS, damage pipeline, effects
-│   ├── generation/          #   Procedural map generation
-│   └── tests/               #   Engine test suite
-│
-├── backend/                 # FastAPI server
-│   ├── api/
-│   │   ├── routes/          #   REST + WebSocket endpoints
-│   │   └── schemas/         #   Pydantic request/response models
-│   ├── inference/           #   Loads .pt models, runs MAPPO at runtime
-│   └── main.py              #   FastAPI entrypoint
-│
-├── training/                # RL training pipeline (standalone)
-│   ├── environment/         #   PettingZoo wrapper over the engine
-│   ├── agents/              #   MAPPO: policy networks, critic, PPO update
-│   ├── curriculum/          #   4-phase training, self-play pool
-│   └── train.py             #   Training CLI entrypoint
-│
-├── frontend/                # Phaser 3 + TypeScript
-│   ├── public/assets/       #   Spritesheets and visual assets
-│   └── src/
-│       ├── scenes/          #   Menu, Preparation, Battle, Result
-│       └── network/         #   REST client, WebSocket client, validation
-│
-├── models/                  # Trained AI checkpoints (.pt files)
-│   ├── easy/                #   5 policy networks (1v1)
-│   ├── normal/              #   5 policy networks (3v3)
-│   └── hard/                #   5 policy networks (mixed)
-│
-├── .specs/                  # Game design documentation
-│   ├── prd.md               #   Product requirements
-│   ├── design.md            #   Technical design (formulas, numerical specs)
-│   ├── state.md             #   Feature development status
-│   └── features/            #   Per-feature specs and task breakdowns
-│
-├── Dockerfile               # Multi-stage build (backend + frontend)
-├── docker-compose.yml       # Orchestration (backend + nginx frontend)
-├── nginx.conf               # Static file serving for production
-└── pyproject.toml           # Python project configuration
+├── engine/         Game engine — pure Python, zero external deps
+├── backend/        FastAPI server (REST + WebSocket) and MAPPO inference
+├── training/       RL training pipeline — MAPPO, curriculum, self-play
+├── frontend/       Phaser 3 + TypeScript client
+├── models/         Trained AI checkpoints (easy / normal / hard)
+├── assets/         Showcase media (GIFs)
+├── scripts/        Background training helpers
+└── .specs/         Game design and technical documentation
 ```
 
 ### Package Dependencies
